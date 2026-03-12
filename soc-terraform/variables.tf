@@ -4,7 +4,7 @@ variable "resource_group_name" {
 
 variable "location" {
   description = "Región permitida en tu suscripción de estudiante"
-  default     = "norwayeast"  # Cambia esto por tu región permitida
+  default     = "Spain Central"  # Cambia esto por tu región permitida
 }
 
 variable "workspace_name" {
