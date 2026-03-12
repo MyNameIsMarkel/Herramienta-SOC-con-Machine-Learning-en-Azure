@@ -20,5 +20,20 @@ provider "azurerm" {
 
 resource "azurerm_resource_group" "soc_rg" {
   name     = "rg-soc-proyecto"
-  location = "Spain Central"  # Cambia si tu región es diferente
+  location = "francecentral"  # Cambia si tu región es diferente
+}
+
+# Log Analytics Workspace
+resource "azurerm_log_analytics_workspace" "law" {
+  name                = "log-soc-ml"
+  location            = azurerm_resource_group.soc_rg.location
+  resource_group_name = azurerm_resource_group.soc_rg.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+  daily_quota_gb      = 0.5
+}
+
+# Microsoft Sentinel (se activa sobre el workspace)
+resource "azurerm_sentinel_log_analytics_workspace_onboarding" "sentinel" {
+  workspace_id = azurerm_log_analytics_workspace.law.id
 }
