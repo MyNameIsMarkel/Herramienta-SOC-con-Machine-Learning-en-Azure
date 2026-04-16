@@ -1,12 +1,14 @@
 variable "resource_group_name" {
-  default = "rg-soc-proyecto"
+  description = "Nombre del Resource Group en Azure"
+  default     = "rg-soc-proyecto"
 }
 
 variable "location" {
-  description = "Región permitida en tu suscripción de estudiante"
-  default     = "Spain Central"  # Cambia esto por tu región permitida
+  description = "Región de Azure permitida en tu suscripción de estudiante"
+  default     = "francecentral"
 }
 
 variable "workspace_name" {
-  default = "law-soc-workspace"
+  description = "Nombre del Log Analytics Workspace"
+  default     = "log-soc-ml"
 }
