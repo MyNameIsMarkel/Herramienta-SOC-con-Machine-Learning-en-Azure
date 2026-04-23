@@ -85,3 +85,4 @@ az ml online-endpoint create --file endpoint.yml ...
 - [x] **Secrets en Key Vault** — Almacenamiento seguro de la URL y la clave del endpoint ML en Azure Key Vault, con políticas de acceso diferenciadas para el usuario y la Managed Identity del workspace.
 - [ ] **Logic App para integración Sentinel ↔ ML** — Automatización del flujo de análisis: la Logic App recibirá alertas de Sentinel, invocará el endpoint ML con los datos del evento y creará incidentes si el modelo detecta anomalía.
 - [ ] **Playbook de respuesta automática** — Implementación de acciones de respuesta ante incidentes confirmados, incluyendo notificaciones y bloqueo de IPs maliciosas identificadas por el modelo.
+- [ ] **Dashboard de monitorización (Frontend)** — Interfaz web para visualizar en tiempo real los eventos analizados, anomalías detectadas, incidentes generados en Sentinel y métricas del modelo, consumiendo datos desde Log Analytics.
