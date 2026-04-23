@@ -24,11 +24,16 @@ provider "azurerm" {
   subscription_id = "b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f"
 }
 
+# ── DATA SOURCES ────────────────────────────────────────────────────────────
+data "azurerm_client_config" "current" {}
+
+# ── RESOURCE GROUP ──────────────────────────────────────────────────────────
 resource "azurerm_resource_group" "soc_rg" {
   name     = var.resource_group_name
   location = var.location
 }
 
+# ── LOG ANALYTICS + SENTINEL ────────────────────────────────────────────────
 resource "azurerm_log_analytics_workspace" "law" {
   name                = var.workspace_name
   location            = azurerm_resource_group.soc_rg.location
@@ -42,6 +47,7 @@ resource "azurerm_sentinel_log_analytics_workspace_onboarding" "sentinel" {
   workspace_id = azurerm_log_analytics_workspace.law.id
 }
 
+# ── RED VIRTUAL ──────────────────────────────────────────────────────────────
 resource "azurerm_virtual_network" "vnet" {
   name                = "vnet-soc-ml"
   location            = azurerm_resource_group.soc_rg.location
@@ -54,4 +60,66 @@ resource "azurerm_subnet" "subnet_main" {
   resource_group_name  = azurerm_resource_group.soc_rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
+}
+
+# ── AZURE ML: STORAGE ACCOUNT ────────────────────────────────────────────────
+resource "azurerm_storage_account" "ml_storage" {
+  name                     = "stsocsmlstorage"
+  location                 = azurerm_resource_group.soc_rg.location
+  resource_group_name      = azurerm_resource_group.soc_rg.name
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+# ── AZURE ML: APPLICATION INSIGHTS ───────────────────────────────────────────
+resource "azurerm_application_insights" "ml_insights" {
+  name                = "appi-soc-ml"
+  location            = azurerm_resource_group.soc_rg.location
+  resource_group_name = azurerm_resource_group.soc_rg.name
+  application_type    = "web"
+}
+
+# ── AZURE ML: KEY VAULT ───────────────────────────────────────────────────────
+resource "azurerm_key_vault" "ml_kv" {
+  name                = "kvsocmlanom"
+  location            = azurerm_resource_group.soc_rg.location
+  resource_group_name = azurerm_resource_group.soc_rg.name
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  sku_name            = "standard"
+
+  # Tu usuario (az login)
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = data.azurerm_client_config.current.object_id
+
+    secret_permissions      = ["Get", "Set", "List", "Delete", "Purge", "Recover"]
+    key_permissions         = ["Get", "List"]
+    certificate_permissions = ["Get", "List"]
+  }
+
+  # Managed Identity del ML Workspace (principal_id fijo para evitar ciclo)
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = "79bd5482-5c3a-45d5-931c-b38641b6aff7"
+
+    secret_permissions      = ["Get", "List"]
+    key_permissions         = ["Get", "List", "WrapKey", "UnwrapKey"]
+    certificate_permissions = ["Get", "List"]
+  }
+}
+
+# ── AZURE ML: WORKSPACE ───────────────────────────────────────────────────────
+resource "azurerm_machine_learning_workspace" "ml_workspace" {
+  name                    = "mlw-soc-anomaly"
+  location                = azurerm_resource_group.soc_rg.location
+  resource_group_name     = azurerm_resource_group.soc_rg.name
+  application_insights_id = azurerm_application_insights.ml_insights.id
+  key_vault_id            = azurerm_key_vault.ml_kv.id
+  storage_account_id      = azurerm_storage_account.ml_storage.id
+
+  container_registry_id   = "/subscriptions/b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f/resourceGroups/rg-soc-proyecto/providers/Microsoft.ContainerRegistry/registries/1dd49672df6e4dbea06af50de1214ed9"
+
+  identity {
+    type = "SystemAssigned"
+  }
 }

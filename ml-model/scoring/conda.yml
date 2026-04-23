@@ -1,0 +1,13 @@
+name: soc-ml-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+    - azureml-defaults>=1.53
+    - scikit-learn
+    - pandas
+    - numpy
+    - joblib

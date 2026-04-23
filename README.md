@@ -1,31 +1,87 @@
-# Herramienta SOC con Machine Learning (Análisis de tráfico + defensas) en Azure
-SOC con Machine Learning en Microsoft Azure para la detección de tráfico anómalo y respuesta automática a incidentes de seguridad. Centraliza logs, entrena un modelo de ML para identificar comportamientos sospechosos y ejecuta defensas automáticas (bloqueo de IPs, reglas de firewall y playbooks) mediante SIEM/SOAR, sin intervención manual.
+# Herramienta SOC con Machine Learning en Azure
 
-## Fase 1: Recolectar Datos
-#### Paso 1: Habilitar fuentes de datos.
-- Activar diagnósticos en Máquinas Virtuales (VM), Bases de Datos y Apps.
-- Conectar los logs de red local o de otras nubes con Azure Arc.
+Proyecto académico que implementa una herramienta de detección de anomalías de red para un Centro de Operaciones de Seguridad (SOC), integrando Machine Learning con Microsoft Azure y Sentinel.
 
-#### Paso 2: Centralizar todo.
-- Crear un Espacio de trabajo de Log Analytics. Donde llegan todos los registros.
+## Descripción
 
-## Fase 2: Machine Learning
-#### Paso 3: Crear modelo de ML.
-- Entrenar un modelo con tráfico normal para que aprenda qué es la "normalidad".
+El sistema analiza tráfico de red en tiempo real utilizando un modelo de Machine Learning entrenado sobre el dataset CIC-IDS2017, detectando patrones anómalos que podrían indicar actividad maliciosa. La infraestructura está desplegada en Azure mediante Terraform.
 
-#### Paso 4: Publicar el modelo.
-- Subir el modelo entrenado a un Endpoint para que otros servicios lo consulten.
+## Arquitectura
 
-## Fase 3: Defensas Automáticas
-#### Paso 5: Configurar las defensas.
-- Microsoft Sentinel (SIEM/SOAR). "Si el ML detecta un ataque X, ejecuta Y para defenderse".
-- Azure Firewall / NSG. Negar accesos automáticamente.
+Logs de red
+↓
+Azure Log Analytics Workspace + Microsoft Sentinel
+↓
+Azure ML Endpoint (detección de anomalías)
+↓
+Generación de incidentes en Sentinel
 
-## Fase 4: Automatización
-#### Paso 6: Usar Azure Logic Apps o Sentinel Playbooks. Al recibir la orden, bloquea la IP del atacante en el firewall automáticamente, sin necesidad de tocar nada.
+## Estructura del proyecto
+├── soc-terraform/ # Infraestructura como código (Terraform)
+│ ├── main.tf # Recursos Azure: RG, Sentinel, ML Workspace, Key Vault
+│ ├── variables.tf # Variables de configuración
+│ ├── outputs.tf # Outputs de Terraform
+│ └── terraform.tfvars # Valores de las variables
+│
+└── ml-model/ # Modelo de Machine Learning
+├── train_model.py # Entrenamiento del modelo (Isolation Forest)
+├── score.py # Script de inferencia para el endpoint
+└── requirements.txt # Dependencias Python
+
+## Tecnologías
+
+- **Cloud**: Microsoft Azure (francecentral)
+- **IaC**: Terraform (azurerm ~> 4.0)
+- **ML**: Azure Machine Learning, Isolation Forest
+- **Seguridad**: Microsoft Sentinel, Azure Key Vault
+- **Lenguaje**: Python 3.x
+
+## Infraestructura desplegada
+
+| Recurso | Nombre |
+|---|---|
+| Resource Group | `rg-soc-proyecto` |
+| Log Analytics Workspace | `log-soc-ml` |
+| Microsoft Sentinel | Habilitado sobre LAW |
+| Azure ML Workspace | `mlw-soc-anomaly` |
+| ML Endpoint | `soc-anomaly-endpoint` |
+| Key Vault | `kvsocmlanom` |
+| Virtual Network | `vnet-soc-ml` |
 
 
-[========]
+## Configuración
 
+### Prerrequisitos
 
-#Cálculo de costes
+- Azure CLI (`az login`)
+- Terraform >= 1.0
+- Python >= 3.8
+- Extensión Azure ML CLI v2 (`az extension add -n ml`)
+
+### Despliegue de infraestructura
+
+```bash
+cd soc-terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+### Entrenamiento y despliegue del modelo
+
+```bash
+cd ml-model
+pip install -r requirements.txt
+python train_model.py
+az ml online-endpoint create --file endpoint.yml ...
+```
+
+## Estado del proyecto
+
+- [x] **Infraestructura base (RG, LAW, Sentinel, VNet)** — Despliegue mediante Terraform del Resource Group, Log Analytics Workspace con Microsoft Sentinel habilitado y red virtual con subred dedicada en Azure Francia Central.
+- [x] **Azure ML Workspace** — Aprovisionamiento del workspace de Azure Machine Learning junto con sus dependencias: Storage Account, Application Insights y Key Vault.
+- [x] **Entrenamiento del modelo (Isolation Forest)** — Entrenamiento de un modelo de detección de anomalías no supervisado sobre el dataset CIC-IDS2017, con 20 features de tráfico de red seleccionadas por importancia.
+- [x] **Endpoint de inferencia en Azure ML** — Despliegue del modelo entrenado como Managed Online Endpoint en Azure ML, expuesto como API REST con autenticación por clave.
+- [x] **Secrets en Key Vault** — Almacenamiento seguro de la URL y la clave del endpoint ML en Azure Key Vault, con políticas de acceso diferenciadas para el usuario y la Managed Identity del workspace.
+- [ ] **Logic App para integración Sentinel ↔ ML** — Automatización del flujo de análisis: la Logic App recibirá alertas de Sentinel, invocará el endpoint ML con los datos del evento y creará incidentes si el modelo detecta anomalía.
+- [ ] **Playbook de respuesta automática** — Implementación de acciones de respuesta ante incidentes confirmados, incluyendo notificaciones y bloqueo de IPs maliciosas identificadas por el modelo.
