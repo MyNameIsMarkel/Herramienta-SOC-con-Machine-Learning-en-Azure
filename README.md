@@ -17,16 +17,18 @@ Azure ML Endpoint (detección de anomalías)
 Generación de incidentes en Sentinel
 
 ## Estructura del proyecto
-├── soc-terraform/ # Infraestructura como código (Terraform)
-│ ├── main.tf # Recursos Azure: RG, Sentinel, ML Workspace, Key Vault
-│ ├── variables.tf # Variables de configuración
-│ ├── outputs.tf # Outputs de Terraform
-│ └── terraform.tfvars # Valores de las variables
-│
-└── ml-model/ # Modelo de Machine Learning
-├── train_model.py # Entrenamiento del modelo (Isolation Forest)
-├── score.py # Script de inferencia para el endpoint
-└── requirements.txt # Dependencias Python
+```
+ ├── soc-terraform/ # Infraestructura como código (Terraform) 
+ │ ├── main.tf # Recursos Azure: RG, Sentinel, ML Workspace, Key Vault 
+ │ ├── variables.tf # Variables de configuración 
+ │ ├── outputs.tf # Outputs de Terraform 
+ │ └── terraform.tfvars # Valores de las variables 
+ │ 
+ └── ml-model/ # Modelo de Machine Learning 
+ ├── train_model.py # Entrenamiento del modelo (Isolation Forest) 
+ ├── score.py # Script de inferencia para el endpoint 
+ └── requirements.txt # Dependencias Python 
+ ```
 
 ## Tecnologías
 
