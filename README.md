@@ -7,7 +7,7 @@ Proyecto académico que implementa una herramienta de detección de anomalías d
 El sistema analiza tráfico de red en tiempo real utilizando un modelo de Machine Learning entrenado sobre el dataset CIC-IDS2017, detectando patrones anómalos que podrían indicar actividad maliciosa. La infraestructura está desplegada en Azure mediante Terraform.
 
 ## Arquitectura
-
+```
 Logs de red
 ↓
 Azure Log Analytics Workspace + Microsoft Sentinel
@@ -15,6 +15,7 @@ Azure Log Analytics Workspace + Microsoft Sentinel
 Azure ML Endpoint (detección de anomalías)
 ↓
 Generación de incidentes en Sentinel
+```
 
 ## Estructura del proyecto
 ```
