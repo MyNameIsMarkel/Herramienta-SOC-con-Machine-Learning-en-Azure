@@ -41,7 +41,7 @@ pipeline = Pipeline([
 pipeline.fit(X_train)
 
 # Guardar en formato MLflow (necesario para registrar en Azure ML)
-mlflow.sklearn.save_model(pipeline, args.output_path)
+mlflow.sklearn.save_model(pipeline, os.path.join(args.output_path, "mlflow_model"))
 
 # Mantener feature names por si acaso
 joblib.dump(list(features.columns), os.path.join(args.output_path, "feature_names.pkl"))
