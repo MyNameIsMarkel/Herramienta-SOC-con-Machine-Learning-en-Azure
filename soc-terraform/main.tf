@@ -7,14 +7,19 @@ terraform {
   }
 
   backend "azurerm" {
-    resource_group_name  = "rg-soc-proyecto"
+    use_oidc             = true
+    use_azuread_auth     = true
+    tenant_id            = "78f3a279-48c8-4670-9162-a63c451c9fae"
+    client_id            = "99dd29f9-ea6c-48b0-afcc-6f4e2e10d375"
     storage_account_name = "tfstatesocml"
     container_name       = "tfstate"
     key                  = "terraform.tfstate"
+    resource_group_name  = "rg-soc-proyecto"
   }
 }
 
 provider "azurerm" {
+  use_oidc = true   # ← AÑADIR ESTO
   features {
     resource_group {
       prevent_deletion_if_contains_resources = false
