@@ -38,7 +38,10 @@ jobs:
 
       - name: Terraform Init
         working-directory: soc-terraform
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="use_oidc=true" \
+            -backend-config="use_cli=false"
         env:
           ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
 
