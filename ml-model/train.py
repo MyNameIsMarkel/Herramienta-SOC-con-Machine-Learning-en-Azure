@@ -3,7 +3,9 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
+import mlflow.sklearn
 import joblib
 import os
 
@@ -32,15 +34,17 @@ if labels is not None:
 
 X_test.to_csv(os.path.join(args.output_path, "test_data.csv"), index=False)
 
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
+pipeline = Pipeline([
+    ("scaler", StandardScaler()),
+    ("model",  IsolationForest(n_estimators=100, contamination=0.05, random_state=42, n_jobs=-1))
+])
+pipeline.fit(X_train)
 
-model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42, n_jobs=-1)
-model.fit(X_train_scaled)
+# Guardar en formato MLflow (necesario para registrar en Azure ML)
+mlflow.sklearn.save_model(pipeline, args.output_path)
 
-joblib.dump(model, os.path.join(args.output_path, "isolation_forest.pkl"))
-joblib.dump(scaler, os.path.join(args.output_path, "scaler.pkl"))
+# Mantener feature names por si acaso
 joblib.dump(list(features.columns), os.path.join(args.output_path, "feature_names.pkl"))
 
 print(f"Entrenado con {len(X_train)} filas")
-print(f"Artefactos guardados en {args.output_path}")
+print(f"Modelo MLflow guardado en {args.output_path}")
