@@ -9,11 +9,16 @@ on:
 permissions:
   id-token: write
   contents: read
-
 jobs:
   terraform:
     name: Terraform Plan & Apply
     runs-on: ubuntu-latest
+    env:                                          # ← MOVER AQUÍ, nivel job
+      ARM_USE_OIDC: "true"
+      ARM_USE_CLI: "false"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
     steps:
       - name: Checkout
@@ -35,29 +40,17 @@ jobs:
         working-directory: soc-terraform
         run: terraform init
         env:
-          ARM_USE_OIDC: "true"
           ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
-          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Plan
         working-directory: soc-terraform
         run: terraform plan
         env:
-          ARM_USE_OIDC: "true"
           ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
-          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         working-directory: soc-terraform
         run: terraform apply -auto-approve
         env:
-          ARM_USE_OIDC: "true"
           ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
-          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
