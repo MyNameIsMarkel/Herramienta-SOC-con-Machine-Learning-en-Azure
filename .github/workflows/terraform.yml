@@ -19,6 +19,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # SIN azure/login — Terraform gestiona OIDC directamente
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -30,10 +32,11 @@ jobs:
         env:
           ARM_USE_OIDC: "true"
           ARM_USE_AZUREAD: "true"
+          ARM_USE_CLI: "false"
           ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
           ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
+      
       - name: Terraform Plan
         working-directory: soc-terraform
         run: terraform plan
