@@ -27,7 +27,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~1.0"
+          terraform_version: "~1.9"
 
       - name: Get OIDC Token
         id: oidc
@@ -38,10 +38,7 @@ jobs:
 
       - name: Terraform Init
         working-directory: soc-terraform
-        run: |
-          terraform init \
-            -backend-config="use_oidc=true" \
-            -backend-config="use_cli=false"
+        run: terraform init
         env:
           ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
 
