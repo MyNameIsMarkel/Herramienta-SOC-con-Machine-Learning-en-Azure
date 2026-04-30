@@ -107,7 +107,7 @@ resource "azurerm_key_vault" "ml_kv" {
     tenant_id = data.azurerm_client_config.current.tenant_id
     object_id = "79bd5482-5c3a-45d5-931c-b38641b6aff7"
 
-    secret_permissions      = ["Get", "List"]
+    secret_permissions      = ["Get", "List", "Set"]     # ← añadir "Set"
     key_permissions         = ["Get", "List", "WrapKey", "UnwrapKey"]
     certificate_permissions = ["Get", "List"]
   }
