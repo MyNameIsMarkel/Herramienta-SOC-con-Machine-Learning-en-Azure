@@ -5,6 +5,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
+import mlflow
 import mlflow.sklearn
 import joblib
 import os
@@ -12,6 +13,8 @@ import os
 parser = argparse.ArgumentParser()
 parser.add_argument("--data_path",   type=str, default="data/cicids2017_monday.csv")
 parser.add_argument("--output_path", type=str, default="model")
+parser.add_argument("--n_estimators",  type=int,   default=100)
+parser.add_argument("--contamination", type=float, default=0.05)
 args = parser.parse_args()
 
 os.makedirs(args.output_path, exist_ok=True)
@@ -34,17 +37,43 @@ if labels is not None:
 
 X_test.to_csv(os.path.join(args.output_path, "test_data.csv"), index=False)
 
-pipeline = Pipeline([
-    ("scaler", StandardScaler()),
-    ("model",  IsolationForest(n_estimators=100, contamination=0.05, random_state=42, n_jobs=-1))
-])
-pipeline.fit(X_train)
+# MLflow run explícito → Azure ML lo registra como experimento
+mlflow.sklearn.autolog(log_models=False)
 
-# Guardar en formato MLflow (necesario para registrar en Azure ML)
-mlflow.sklearn.save_model(pipeline, os.path.join(args.output_path, "mlflow_model"))
+with mlflow.start_run():
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model",  IsolationForest(
+            n_estimators=args.n_estimators,
+            contamination=args.contamination,
+            random_state=42,
+            n_jobs=-1
+        ))
+    ])
+    pipeline.fit(X_train)
 
-# Mantener feature names por si acaso
-joblib.dump(list(features.columns), os.path.join(args.output_path, "feature_names.pkl"))
+    # Métricas básicas del modelo
+    scores = pipeline.decision_function(X_test)
+    preds  = pipeline.predict(X_test)
+    anomaly_ratio = (preds == -1).mean()
 
-print(f"Entrenado con {len(X_train)} filas")
-print(f"Modelo MLflow guardado en {args.output_path}")
+    mlflow.log_params({
+        "n_estimators":  args.n_estimators,
+        "contamination": args.contamination,
+        "train_rows":    len(X_train),
+        "n_features":    X_train.shape[1],
+    })
+    mlflow.log_metrics({
+        "anomaly_ratio_test": float(anomaly_ratio),
+        "mean_anomaly_score": float(scores.mean()),
+    })
+
+    # Guardar modelo en formato MLflow
+    mlflow.sklearn.save_model(pipeline, os.path.join(args.output_path, "mlflow_model"))
+
+    # Feature names para inferencia posterior
+    joblib.dump(list(features.columns), os.path.join(args.output_path, "feature_names.pkl"))
+
+    print(f"Entrenado con {len(X_train)} filas, {X_train.shape[1]} features")
+    print(f"Anomaly ratio en test: {anomaly_ratio:.3%}")
+    print(f"Modelo guardado en {args.output_path}/mlflow_model")
