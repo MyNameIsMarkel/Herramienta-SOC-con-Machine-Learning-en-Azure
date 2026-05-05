@@ -6,27 +6,37 @@ terraform {
     }
   }
 
-  backend "azurerm" {
-    use_oidc             = true
-    use_azuread_auth     = true
-    tenant_id            = "78f3a279-48c8-4670-9162-a63c451c9fae"
-    client_id            = "99dd29f9-ea6c-48b0-afcc-6f4e2e10d375"
-    storage_account_name = "tfstatesocml"
-    container_name       = "tfstate"
-    key                  = "terraform.tfstate"
-    resource_group_name  = "rg-soc-proyecto"
-  }
+#   backend "azurerm" {
+#     use_oidc             = true
+#     use_azuread_auth     = true
+#     tenant_id            = "78f3a279-48c8-4670-9162-a63c451c9fae"
+#     client_id            = "99dd29f9-ea6c-48b0-afcc-6f4e2e10d375"
+#     storage_account_name = "tfstatesocml"
+#     container_name       = "tfstate"
+#     key                  = "terraform.tfstate"
+#    resource_group_name  = "rg-soc-proyecto"
+#  }
 }
 
 provider "azurerm" {
-  use_oidc = true
+#   use_oidc = true
   features {
     resource_group {
       prevent_deletion_if_contains_resources = false
     }
+    machine_learning {
+      purge_soft_deleted_workspace_on_destroy = true
+    }
+    key_vault {
+      purge_soft_delete_on_destroy    = true
+      recover_soft_deleted_key_vaults = true
+    }
+    log_analytics_workspace {
+      permanently_delete_on_destroy = true
+    }
   }
   resource_provider_registrations = "none"
-  subscription_id = "b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f"
+  subscription_id                 = "b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f"
 }
 
 # ── DATA SOURCES ────────────────────────────────────────────────────────────
@@ -122,9 +132,21 @@ resource "azurerm_machine_learning_workspace" "ml_workspace" {
   key_vault_id            = azurerm_key_vault.ml_kv.id
   storage_account_id      = azurerm_storage_account.ml_storage.id
 
-  container_registry_id   = "/subscriptions/b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f/resourceGroups/rg-soc-proyecto/providers/Microsoft.ContainerRegistry/registries/1dd49672df6e4dbea06af50de1214ed9"
+#  container_registry_id   = "/subscriptions/b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f/resourceGroups/rg-soc-proyecto/providers/Microsoft.ContainerRegistry/registries/1dd49672df6e4dbea06af50de1214ed9"
 
   identity {
     type = "SystemAssigned"
   }
+}
+
+
+# Acceso del workspace al Key Vault (identity dinámica)
+resource "azurerm_key_vault_access_policy" "ml_workspace_policy" {
+  key_vault_id = azurerm_key_vault.ml_kv.id
+  tenant_id    = azurerm_machine_learning_workspace.ml_workspace.identity[0].tenant_id
+  object_id    = azurerm_machine_learning_workspace.ml_workspace.identity[0].principal_id
+
+  secret_permissions      = ["Get", "List"]
+  key_permissions         = ["Get", "List", "WrapKey", "UnwrapKey"]
+  certificate_permissions = ["Get", "List"]
 }

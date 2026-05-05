@@ -1,56 +1,42 @@
-from azure.ai.ml import MLClient, command, Input, Output
-from azure.ai.ml.entities import AmlCompute, Environment
+from azure.ai.ml import MLClient, command, Input
 from azure.ai.ml.constants import AssetTypes
 from azure.identity import DefaultAzureCredential
+from azure.ai.ml.entities import Environment
 
 ml_client = MLClient(
-    credential=DefaultAzureCredential(),
+    DefaultAzureCredential(),
     subscription_id="b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f",
     resource_group_name="rg-soc-proyecto",
     workspace_name="mlw-soc-anomaly"
 )
 
-# Compute serverless (sin coste cuando no corre)
-try:
-    ml_client.compute.get("cpu-cluster")
-    print("Compute ya existe")
-except:
-    cluster = AmlCompute(
-        name="cpu-cluster",
-        size="Standard_DS2_v2",
-        min_instances=0,
-        max_instances=2,
-        idle_time_before_scale_down=120
-    )
-    ml_client.compute.begin_create_or_update(cluster).result()
-    print("Compute creado")
-
-# Entorno desde conda.yml
+# Registrar el entorno en el workspace antes de usarlo
 env = Environment(
     name="soc-anomaly-env",
+    version="1",
+    image="mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest",
     conda_file="conda.yml",
-    image="mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04"
+    description="Entorno SOC con scikit-learn e Isolation Forest"
 )
+ml_client.environments.create_or_update(env)  # <-- línea clave que faltaba
 
-# Job de entrenamiento
 job = command(
-    code=".",                          # sube toda la carpeta ml-model/
-    command="python train.py --data_path ${{inputs.data}} --output_path ${{outputs.model}}",
+    code="./",
+    command="python train.py --data_path ${{inputs.train_data}} --output_path ./outputs --n_estimators 100 --contamination 0.05",
     inputs={
-        "data": Input(
+        "train_data": Input(
             type=AssetTypes.URI_FILE,
-            path="data/cicids2017_monday.csv"
+            path="azureml:soc-train-data:1"
         )
     },
-    outputs={
-        "model": Output(type=AssetTypes.URI_FOLDER)
-    },
-    environment=env,
-    compute="cpu-cluster",
-    display_name="soc-anomaly-training",
-    experiment_name="soc-anomaly-detection"
+    environment="azureml:soc-anomaly-env:1",  # referencia por nombre tras registrarlo
+    compute="cpu-soc-cluster",
+    display_name="soc-isolation-forest-v1",
+    experiment_name="soc-anomaly-detection",
+    description="Entrenamiento Isolation Forest con CICIDS2017 Monday"
 )
 
 returned_job = ml_client.jobs.create_or_update(job)
-print(f"Job enviado: {returned_job.name}")
-print(f"URL: {returned_job.studio_url}")
+print(f"Job lanzado: {returned_job.name}")
+print(f"Estado:      {returned_job.status}")
+print(f"Studio URL:  {returned_job.studio_url}")
