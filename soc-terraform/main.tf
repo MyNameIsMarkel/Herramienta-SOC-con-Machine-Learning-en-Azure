@@ -132,10 +132,16 @@ resource "azurerm_machine_learning_workspace" "ml_workspace" {
   key_vault_id            = azurerm_key_vault.ml_kv.id
   storage_account_id      = azurerm_storage_account.ml_storage.id
 
-#  container_registry_id   = "/subscriptions/b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f/resourceGroups/rg-soc-proyecto/providers/Microsoft.ContainerRegistry/registries/1dd49672df6e4dbea06af50de1214ed9"
-
   identity {
     type = "SystemAssigned"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      container_registry_id,
+      managed_network,
+      tags
+    ]
   }
 }
 
