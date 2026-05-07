@@ -18,8 +18,7 @@ env = Environment(
     conda_file="conda.yml",
     description="Entorno SOC con scikit-learn e Isolation Forest"
 )
-ml_client.environments.create_or_update(env)  # <-- línea clave que faltaba
-
+ml_client.environments.create_or_update(env)
 job = command(
     code="./",
     command="python train.py --data_path ${{inputs.train_data}} --output_path ./outputs --n_estimators 100 --contamination 0.05",
@@ -29,7 +28,7 @@ job = command(
             path="azureml:soc-train-data:1"
         )
     },
-    environment="azureml:soc-anomaly-env:1",  # referencia por nombre tras registrarlo
+    environment="azureml:soc-anomaly-env:1",
     compute="cpu-soc-cluster",
     display_name="soc-isolation-forest-v1",
     experiment_name="soc-anomaly-detection",
