@@ -23,3 +23,8 @@ output "logic_app_trigger_url" {
   value       = azurerm_logic_app_trigger_http_request.sentinel_trigger.callback_url
   sensitive   = true
 }
+
+output "dashboard_url" {
+  description = "URL pública del dashboard"
+  value       = azurerm_storage_account.ml_storage.primary_web_endpoint
+}
