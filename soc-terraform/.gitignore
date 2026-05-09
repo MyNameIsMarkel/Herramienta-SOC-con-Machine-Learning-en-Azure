@@ -1,9 +1,0 @@
-# Terraform
-**/.terraform/*
-*.tfstate
-*.tfstate.*
-errored.tfstate
-*.tfvars
-crash.log
-# Datos de entrenamiento (demasiado grandes para Git)
-ml-model/data/*.csv
