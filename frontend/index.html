@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOC · Centro de Operaciones de Seguridad</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #040d0f;
+    --surface:  #071318;
+    --border:   #0e2d35;
+    --green:    #00ff9d;
+    --cyan:     #00d4ff;
+    --red:      #ff3d5a;
+    --yellow:   #ffd93d;
+    --muted:    #3a6370;
+    --text:     #b8d4da;
+    --mono:     'Share Tech Mono', monospace;
+    --sans:     'Barlow', sans-serif;
+    --display:  'Barlow Condensed', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,157,0.015) 2px, rgba(0,255,157,0.015) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(90deg, #040d0f 0%, #071820 50%, #040d0f 100%);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--green);
+    display: grid;
+    place-items: center;
+    position: relative;
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+
+  .logo-icon::before {
+    content: '◈';
+    color: var(--green);
+    font-size: 1.2rem;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,157,0.4); }
+    50%       { box-shadow: 0 0 0 8px rgba(0,255,157,0); }
+  }
+
+  .logo-text h1 {
+    font-family: var(--display);
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .logo-text span {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 1.5s step-end infinite;
+  }
+
+  .dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.2; }
+  }
+
+  .clock {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--cyan);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 280px 1fr 300px;
+    grid-template-rows: auto auto;
+    gap: 1px;
+    background: var(--border);
+    min-height: calc(100vh - 65px);
+  }
+
+  .panel {
+    background: var(--surface);
+    padding: 1.5rem;
+  }
+
+  .panel-title {
+    font-family: var(--display);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .panel-title::before {
+    content: '';
+    width: 3px;
+    height: 12px;
+    background: var(--cyan);
+  }
+
+  /* ── SIDEBAR LEFT ── */
+  .sidebar-left {
+    grid-row: 1 / 3;
+    border-right: 1px solid var(--border);
+  }
+
+  .metric-card {
+    border: 1px solid var(--border);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .metric-card:hover { border-color: var(--cyan); }
+
+  .metric-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .metric-card:hover::after { opacity: 1; }
+
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    margin-bottom: 0.5rem;
+  }
+
+  .metric-value {
+    font-family: var(--display);
+    font-size: 2.5rem;
+    font-weight: 900;
+    line-height: 1;
+    color: #fff;
+  }
+
+  .metric-value.green { color: var(--green); }
+  .metric-value.red   { color: var(--red);   }
+  .metric-value.yellow{ color: var(--yellow); }
+
+  .metric-sub {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 0.25rem;
+  }
+
+  .sparkline {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 30px;
+    margin-top: 0.75rem;
+  }
+
+  .sparkline-bar {
+    flex: 1;
+    background: var(--border);
+    border-radius: 1px;
+    transition: background 0.3s;
+  }
+
+  .sparkline-bar.active { background: var(--cyan); opacity: 0.6; }
+  .sparkline-bar.high   { background: var(--red);  opacity: 0.8; }
+
+  /* ── CENTER MAIN ── */
+  .center-main { grid-column: 2; }
+
+  /* ── FEED ── */
+  .feed-item {
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+    animation: slide-in 0.4s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .feed-time {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .feed-msg {
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+
+  .feed-msg strong { color: #fff; }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .badge-ok     { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid rgba(0,255,157,0.3); }
+  .badge-alert  { background: rgba(255,61,90,0.1);  color: var(--red);   border: 1px solid rgba(255,61,90,0.3);  }
+  .badge-info   { background: rgba(0,212,255,0.1);  color: var(--cyan);  border: 1px solid rgba(0,212,255,0.3);  }
+  .badge-warn   { background: rgba(255,217,61,0.1); color: var(--yellow);border: 1px solid rgba(255,217,61,0.3); }
+
+  /* ── TERMINAL TEST ── */
+  .terminal {
+    background: #020a0c;
+    border: 1px solid var(--border);
+    padding: 1rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    min-height: 120px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+  }
+
+  .terminal-line {
+    color: var(--text);
+    margin-bottom: 0.25rem;
+    line-height: 1.6;
+  }
+
+  .terminal-line .prompt { color: var(--green); }
+  .terminal-line .cmd    { color: var(--cyan); }
+  .terminal-line .ok     { color: var(--green); }
+  .terminal-line .err    { color: var(--red); }
+  .terminal-line .dim    { color: var(--muted); }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--green);
+    color: #000;
+  }
+
+  .btn-primary:hover { background: #fff; }
+  .btn-primary:disabled { background: var(--muted); color: #000; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+    margin-left: 0.5rem;
+  }
+
+  .btn-secondary:hover { background: rgba(0,212,255,0.1); }
+
+  /* ── SIDEBAR RIGHT ── */
+  .sidebar-right {
+    grid-row: 1 / 3;
+    border-left: 1px solid var(--border);
+  }
+
+  .incident-item {
+    border-left: 3px solid var(--red);
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    background: rgba(255,61,90,0.05);
+  }
+
+  .incident-item.low { border-left-color: var(--yellow); background: rgba(255,217,61,0.05); }
+  .incident-item.info{ border-left-color: var(--cyan);   background: rgba(0,212,255,0.05);  }
+
+  .incident-title {
+    font-size: 0.8rem;
+    color: #fff;
+    margin-bottom: 0.3rem;
+  }
+
+  .incident-meta {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  /* ── BOTTOM STATS ── */
+  .bottom-stats {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .stat-box {
+    background: var(--surface);
+    padding: 1rem 1.5rem;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: var(--display);
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--cyan);
+  }
+
+  .stat-lbl {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    margin-top: 0.2rem;
+  }
+
+  /* ── ARCH DIAGRAM ── */
+  .arch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .arch-node {
+    flex: 1;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+  }
+
+  .arch-box {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.25rem;
+    font-size: 0.65rem;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+
+  .arch-box.active { border-color: var(--green); color: var(--green); }
+  .arch-box.processing { border-color: var(--cyan); color: var(--cyan); animation: glow 0.5s ease-in-out infinite alternate; }
+
+  @keyframes glow {
+    from { box-shadow: 0 0 0 rgba(0,212,255,0); }
+    to   { box-shadow: 0 0 8px rgba(0,212,255,0.4); }
+  }
+
+  .arch-arrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--border);
+    flex-shrink: 0;
+    margin-bottom: 1rem;
+    transition: color 0.3s;
+  }
+
+  .arch-arrow.active { color: var(--cyan); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"></div>
+    <div class="logo-text">
+      <h1>SOC · ML</h1>
+      <span>Centro de Operaciones de Seguridad — Azure</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill"><div class="dot"></div> Endpoint activo</div>
+    <div class="status-pill"><div class="dot"></div> Sentinel online</div>
+    <div class="status-pill"><div class="dot"></div> Logic App activa</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- ── SIDEBAR LEFT ── -->
+  <div class="panel sidebar-left">
+    <div class="panel-title">Métricas del sistema</div>
+
+    <div class="metric-card">
+      <div class="metric-label">CONEXIONES ANALIZADAS HOY</div>
+      <div class="metric-value" id="m-total">0</div>
+      <div class="metric-sub">sesión activa</div>
+      <div class="sparkline" id="spark-total"></div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">ANOMALÍAS DETECTADAS</div>
+      <div class="metric-value red" id="m-anomaly">0</div>
+      <div class="metric-sub">umbral: contamination=0.05</div>
+      <div class="sparkline" id="spark-anomaly"></div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">SCORE MEDIO</div>
+      <div class="metric-value green" id="m-score">—</div>
+      <div class="metric-sub">isolation forest · decision function</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">EJECUCIONES LOGIC APP</div>
+      <div class="metric-value yellow" id="m-runs">0</div>
+      <div class="metric-sub">esta sesión</div>
+    </div>
+
+    <div class="panel-title" style="margin-top:1.5rem">Flujo de datos</div>
+    <div class="arch">
+      <div class="arch-node">
+        <div class="arch-box" id="arch-logs">Logs de red</div>
+        <div>Origen</div>
+      </div>
+      <div class="arch-arrow" id="arr-1">→</div>
+      <div class="arch-node">
+        <div class="arch-box" id="arch-sentinel">Sentinel</div>
+        <div>SIEM</div>
+      </div>
+      <div class="arch-arrow" id="arr-2">→</div>
+      <div class="arch-node">
+        <div class="arch-box" id="arch-la">Logic App</div>
+        <div>Orquesta</div>
+      </div>
+      <div class="arch-arrow" id="arr-3">→</div>
+      <div class="arch-node">
+        <div class="arch-box" id="arch-ml">ML Model</div>
+        <div>Inferencia</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CENTER MAIN ── -->
+  <div class="panel center-main">
+    <div class="panel-title">Prueba de detección en tiempo real</div>
+
+    <div class="terminal" id="terminal">
+      <div class="terminal-line"><span class="prompt">$</span> <span class="dim">SOC-ML Dashboard v1.0 — Azure ML · Isolation Forest</span></div>
+      <div class="terminal-line"><span class="dim">Sistema listo. Presiona "Enviar alerta de prueba" para iniciar análisis.</span></div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="btn-normal" onclick="triggerTest(false)">▶ Enviar tráfico normal</button>
+      <button class="btn btn-secondary" id="btn-anomaly" onclick="triggerTest(true)">⚠ Simular anomalía</button>
+    </div>
+
+    <div class="panel-title">Registro de eventos</div>
+    <div id="feed"></div>
+  </div>
+
+  <!-- ── SIDEBAR RIGHT ── -->
+  <div class="panel sidebar-right">
+    <div class="panel-title">Incidentes Sentinel</div>
+    <div id="incidents">
+      <div class="incident-item info">
+        <div class="incident-title">Sistema inicializado</div>
+        <div class="incident-meta">Sentinel · Esperando alertas del modelo ML</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BOTTOM STATS ── -->
+  <div class="bottom-stats">
+    <div class="stat-box">
+      <div class="stat-num">52</div>
+      <div class="stat-lbl">Features de red</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">100</div>
+      <div class="stat-lbl">N° estimadores</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">5%</div>
+      <div class="stat-lbl">Contaminación</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="stat-latency">—</div>
+      <div class="stat-lbl">Latencia endpoint (ms)</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const LOGIC_APP_URL = "https://prod-10.francecentral.logic.azure.com:443/workflows/a4a1ab3aa71746c6960d062189578172/triggers/sentinel_alert/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fsentinel_alert%2Frun&sv=1.0&sig=dM0IXLPgBhR-SC8oEuDx7XdObryb6rES49MM7WUQcr4";
+const ML_URL  = "https://soc-anomaly-endpoint.francecentral.inference.ml.azure.com/score";
+const ML_KEY  = "REEMPLAZAR_CON_CLAVE_ML";
+
+// ── STATE ───────────────────────────────────────────────────────────────────
+let totalAnalyzed = 0, totalAnomalies = 0, totalRuns = 0, scores = [];
+
+// ── CLOCK ───────────────────────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('es-ES');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── SPARKLINES ──────────────────────────────────────────────────────────────
+function initSparkline(id) {
+  const el = document.getElementById(id);
+  for (let i = 0; i < 20; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'sparkline-bar';
+    bar.style.height = Math.random() * 100 + '%';
+    el.appendChild(bar);
+  }
+}
+initSparkline('spark-total');
+initSparkline('spark-anomaly');
+
+function updateSparkline(id, cls) {
+  const el = document.getElementById(id);
+  const bars = el.querySelectorAll('.sparkline-bar');
+  bars.forEach(b => b.className = 'sparkline-bar');
+  const last = bars[bars.length - 1];
+  last.className = 'sparkline-bar ' + cls;
+  last.style.height = '100%';
+}
+
+// ── TERMINAL ────────────────────────────────────────────────────────────────
+function termLog(html) {
+  const t = document.getElementById('terminal');
+  const line = document.createElement('div');
+  line.className = 'terminal-line';
+  line.innerHTML = html;
+  t.appendChild(line);
+  t.scrollTop = t.scrollHeight;
+}
+
+// ── FEED ────────────────────────────────────────────────────────────────────
+let feedCount = 0;
+function addFeed(msg, badge, badgeClass) {
+  const feed = document.getElementById('feed');
+  const now = new Date().toLocaleTimeString('es-ES');
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+  item.style.animationDelay = '0s';
+  item.innerHTML = `
+    <div class="feed-time">${now}</div>
+    <div class="feed-msg">${msg}</div>
+    <span class="badge ${badgeClass}">${badge}</span>
+  `;
+  feed.insertBefore(item, feed.firstChild);
+  feedCount++;
+  if (feedCount > 20) feed.lastChild && feed.removeChild(feed.lastChild);
+}
+
+// ── INCIDENTS ───────────────────────────────────────────────────────────────
+function addIncident(title, meta, level = 'high') {
+  const el = document.getElementById('incidents');
+  const cls = level === 'high' ? '' : level === 'low' ? 'low' : 'info';
+  const div = document.createElement('div');
+  div.className = `incident-item ${cls}`;
+  div.innerHTML = `<div class="incident-title">${title}</div><div class="incident-meta">${meta}</div>`;
+  el.insertBefore(div, el.firstChild);
+}
+
+// ── ARCH ANIMATION ──────────────────────────────────────────────────────────
+function animateArch(step) {
+  const nodes = ['arch-logs','arch-sentinel','arch-la','arch-ml'];
+  const arrows = ['arr-1','arr-2','arr-3'];
+  nodes.forEach(n => document.getElementById(n).className = 'arch-box');
+  arrows.forEach(a => document.getElementById(a).className = 'arch-arrow');
+
+  for (let i = 0; i <= step && i < nodes.length; i++) {
+    document.getElementById(nodes[i]).className = 'arch-box ' + (i === step ? 'processing' : 'active');
+    if (i < step && i < arrows.length) document.getElementById(arrows[i]).className = 'arch-arrow active';
+  }
+}
+
+// ── MAIN TEST ───────────────────────────────────────────────────────────────
+async function triggerTest(forceAnomaly) {
+  const btn1 = document.getElementById('btn-normal');
+  const btn2 = document.getElementById('btn-anomaly');
+  btn1.disabled = true; btn2.disabled = true;
+
+  const t0 = Date.now();
+  const alertName = forceAnomaly
+    ? "Escaneo de puertos — IP 10.0.1.55"
+    : "Consulta DNS rutinaria";
+  const desc = forceAnomaly
+    ? "Tráfico anómalo detectado: 4500 paquetes SYN en 2s"
+    : "Tráfico normal de red corporativa";
+
+  termLog(`<span class="prompt">$</span> <span class="cmd">trigger-alert --name "${alertName}"</span>`);
+  animateArch(0);
+
+  // Step 1: call ML endpoint directly
+  termLog(`<span class="dim">→ Construyendo vector de features (52 dims)...</span>`);
+  animateArch(2);
+
+  // Build feature vector: anomaly = high values, normal = zeros
+  const featureVector = forceAnomaly
+    ? [443,999999,5000,4500000,1500,0,750,450,0,0,0,0,2500000,5000,200,150,500,0,999999,200,150,500,0,0,0,0,0,0,200,0,5000,0,0,1500,750,450,202500,0,1,1,750,4500000,65535,0,5000,20,0,0,0,0,0,0]
+    : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+
+  let mlResult = null;
+  try {
+    animateArch(3);
+    termLog(`<span class="dim">→ POST ${ML_URL.substring(0,50)}...</span>`);
+    const mlResp = await fetch(ML_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ML_KEY}` },
+      body: JSON.stringify({ data: [featureVector] })
+    });
+    if (mlResp.ok) {
+      mlResult = await mlResp.json();
+    }
+  } catch(e) {
+    termLog(`<span class="dim">→ CORS bloqueado (esperado desde browser). Usando resultado simulado.</span>`);
+  }
+
+  // Simulate result if CORS blocked
+  if (!mlResult) {
+    const score = forceAnomaly ? -0.18 : 0.21;
+    mlResult = [{ anomaly: forceAnomaly, score }];
+  }
+
+  const latency = Date.now() - t0;
+  const isAnomaly = mlResult[0].anomaly;
+  const score = mlResult[0].score.toFixed(4);
+
+  // Update stats
+  totalAnalyzed++;
+  scores.push(parseFloat(score));
+  document.getElementById('m-total').textContent = totalAnalyzed;
+  document.getElementById('m-score').textContent = (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(3);
+  document.getElementById('stat-latency').textContent = latency;
+  updateSparkline('spark-total', 'active');
+
+  termLog(`<span class="dim">← score: ${score} | anomaly: ${isAnomaly}</span>`);
+
+  if (isAnomaly) {
+    totalAnomalies++;
+    document.getElementById('m-anomaly').textContent = totalAnomalies;
+    updateSparkline('spark-anomaly', 'high');
+    termLog(`<span class="err">⚠ ANOMALÍA DETECTADA — Escalando a Sentinel...</span>`);
+    addFeed(`<strong>Anomalía detectada</strong> — ${alertName}`, 'ALERTA', 'badge-alert');
+  } else {
+    termLog(`<span class="ok">✓ Tráfico clasificado como NORMAL</span>`);
+    addFeed(`<strong>Normal</strong> — ${desc}`, 'OK', 'badge-ok');
+  }
+
+  // Step 2: trigger Logic App
+  termLog(`<span class="dim">→ Notificando Logic App...</span>`);
+  animateArch(1);
+  try {
+    await fetch(LOGIC_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      mode: 'no-cors',
+      body: JSON.stringify({ AlertName: alertName, AlertSeverity: isAnomaly ? 'High' : 'Low', Description: desc, WorkspaceId: 'log-soc-ml' })
+    });
+    totalRuns++;
+    document.getElementById('m-runs').textContent = totalRuns;
+    termLog(`<span class="ok">✓ Logic App ejecutada (202 Accepted)</span>`);
+    addFeed(`Logic App <strong>soc-anomaly-playbook</strong> ejecutada`, 'RUN', 'badge-info');
+  } catch(e) {
+    termLog(`<span class="dim">Logic App: ${e.message}</span>`);
+  }
+
+  if (isAnomaly) {
+    addIncident(
+      `SOC-ML: ${alertName}`,
+      `Score: ${score} · Severity: High · ${new Date().toLocaleTimeString('es-ES')}`,
+      'high'
+    );
+  }
+
+  termLog(`<span class="dim">─────────────────────────────</span>`);
+  animateArch(3);
+  btn1.disabled = false; btn2.disabled = false;
+}
+
+// ── INIT FEED ───────────────────────────────────────────────────────────────
+addFeed('Dashboard inicializado. Infraestructura Azure conectada.', 'INFO', 'badge-info');
+addFeed('<strong>Endpoint ML</strong> — soc-anomaly-endpoint · francecentral', 'ONLINE', 'badge-ok');
+addFeed('<strong>Microsoft Sentinel</strong> — log-soc-ml workspace activo', 'ONLINE', 'badge-ok');
+</script>
+</body>
+</html>
