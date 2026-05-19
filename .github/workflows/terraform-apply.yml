@@ -73,6 +73,7 @@ jobs:
             fi
           }
 
+          # ── Recursos base ──────────────────────────────────────────────────
           import_if_missing "azurerm_resource_group.soc_rg" \
             "/subscriptions/${SUB}/resourceGroups/${RG}"
 
@@ -80,7 +81,7 @@ jobs:
             "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.OperationalInsights/workspaces/log-soc-ml"
 
           import_if_missing "azurerm_sentinel_log_analytics_workspace_onboarding.sentinel" \
-            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.OperationalInsights/workspaces/log-soc-ml"
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.OperationalInsights/workspaces/log-soc-ml/providers/Microsoft.SecurityInsights/onboardingStates/default"
 
           import_if_missing "azurerm_storage_account.ml_storage" \
             "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Storage/storageAccounts/stsocsmlstorage"
@@ -100,14 +101,41 @@ jobs:
           import_if_missing "azurerm_subnet.subnet_main" \
             "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Network/virtualNetworks/vnet-soc-ml/subnets/subnet-soc-main"
 
+          # ── Logic App detección ────────────────────────────────────────────
           import_if_missing "azurerm_logic_app_workflow.soc_playbook" \
             "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-anomaly-playbook"
 
+          import_if_missing "azurerm_logic_app_trigger_http_request.sentinel_trigger" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-anomaly-playbook/triggers/sentinel_alert"
+
+          import_if_missing "azurerm_logic_app_action_custom.call_ml_endpoint" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-anomaly-playbook/actions/Call_ML_Endpoint"
+
+          import_if_missing "azurerm_logic_app_action_custom.parse_ml_response" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-anomaly-playbook/actions/Parse_ML_Response"
+
+          import_if_missing "azurerm_logic_app_action_custom.check_anomaly" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-anomaly-playbook/actions/Check_If_Anomaly"
+
+          # ── Logic App respuesta ────────────────────────────────────────────
           import_if_missing "azurerm_logic_app_workflow.response_playbook" \
             "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-response-playbook"
 
+          import_if_missing "azurerm_logic_app_trigger_http_request.response_trigger" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-response-playbook/triggers/incident_confirmed"
+
+          import_if_missing "azurerm_logic_app_action_custom.block_ip_nsg" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-response-playbook/actions/Block_IP_NSG"
+
           import_if_missing "azurerm_network_security_group.soc_response_nsg" \
             "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Network/networkSecurityGroups/nsg-soc-response"
+
+          # ── Role assignments (importar en vez de recrear) ──────────────────
+          import_if_missing "azurerm_role_assignment.logic_app_sentinel_contributor" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.OperationalInsights/workspaces/log-soc-ml/providers/Microsoft.Authorization/roleAssignments/27249f78-7130-8142-cc7b-77ce243ab935"
+
+          import_if_missing "azurerm_role_assignment.response_network_contributor" \
+            "/subscriptions/${SUB}/providers/Microsoft.Authorization/roleAssignments/0c8be6f2-a42f-5d01-e79d-0e565edfdfb8"
 
       - name: Terraform Plan
         working-directory: infraestructura
