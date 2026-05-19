@@ -6,20 +6,20 @@ terraform {
     }
   }
 
-#   backend "azurerm" {
-#     use_oidc             = true
-#     use_azuread_auth     = true
-#     tenant_id            = "78f3a279-48c8-4670-9162-a63c451c9fae"
-#     client_id            = "99dd29f9-ea6c-48b0-afcc-6f4e2e10d375"
-#     storage_account_name = "tfstatesocml"
-#     container_name       = "tfstate"
-#     key                  = "terraform.tfstate"
-#    resource_group_name  = "rg-soc-proyecto"
-#  }
+  # Backend remoto — el state persiste entre workflows (apply y destroy comparten el mismo state)
+  # REQUISITO: crear el storage account y el container una sola vez antes del primer apply:
+  #   az storage account create --name tfstatesocml --resource-group rg-soc-proyecto --location francecentral --sku Standard_LRS
+  #   az storage container create --name tfstate --account-name tfstatesocml
+  backend "azurerm" {
+    use_oidc             = true
+    resource_group_name  = "rg-soc-proyecto"
+    storage_account_name = "tfstatesocml"
+    container_name       = "tfstate"
+    key                  = "terraform.tfstate"
+  }
 }
 
 provider "azurerm" {
-#   use_oidc = true
   features {
     resource_group {
       prevent_deletion_if_contains_resources = false
@@ -106,7 +106,6 @@ resource "azurerm_key_vault" "ml_kv" {
   tenant_id           = data.azurerm_client_config.current.tenant_id
   sku_name            = "standard"
 
-  # Tu usuario (az login)
   access_policy {
     tenant_id = data.azurerm_client_config.current.tenant_id
     object_id = data.azurerm_client_config.current.object_id
@@ -116,12 +115,11 @@ resource "azurerm_key_vault" "ml_kv" {
     certificate_permissions = ["Get", "List"]
   }
 
-  # Managed Identity del ML Workspace (principal_id fijo para evitar ciclo)
   access_policy {
     tenant_id = data.azurerm_client_config.current.tenant_id
     object_id = "79bd5482-5c3a-45d5-931c-b38641b6aff7"
 
-    secret_permissions      = ["Get", "List", "Set"]     # ← añadir "Set"
+    secret_permissions      = ["Get", "List", "Set"]
     key_permissions         = ["Get", "List", "WrapKey", "UnwrapKey"]
     certificate_permissions = ["Get", "List"]
   }
@@ -149,8 +147,6 @@ resource "azurerm_machine_learning_workspace" "ml_workspace" {
   }
 }
 
-
-# Acceso del workspace al Key Vault (identity dinámica)
 resource "azurerm_key_vault_access_policy" "ml_workspace_policy" {
   key_vault_id = azurerm_key_vault.ml_kv.id
   tenant_id    = azurerm_machine_learning_workspace.ml_workspace.identity[0].tenant_id
