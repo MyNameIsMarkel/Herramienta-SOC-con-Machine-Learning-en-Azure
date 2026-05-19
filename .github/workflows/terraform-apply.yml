@@ -132,10 +132,10 @@ jobs:
 
           # ── Role assignments (importar en vez de recrear) ──────────────────
           import_if_missing "azurerm_role_assignment.logic_app_sentinel_contributor" \
-            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.OperationalInsights/workspaces/log-soc-ml/providers/Microsoft.Authorization/roleAssignments/27249f78-7130-8142-cc7b-77ce243ab935"
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.OperationalInsights/workspaces/log-soc-ml/providers/Microsoft.Authorization/roleAssignments/336bc74b2afc2cdcc597acdb9bfb93e2"
 
           import_if_missing "azurerm_role_assignment.response_network_contributor" \
-            "/subscriptions/${SUB}/providers/Microsoft.Authorization/roleAssignments/0c8be6f2-a42f-5d01-e79d-0e565edfdfb8"
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Authorization/roleAssignments/e9163b5ff9143d33cea517cd66b77dff"
 
       - name: Terraform Plan
         working-directory: infraestructura
