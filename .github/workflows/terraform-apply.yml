@@ -22,9 +22,8 @@ jobs:
       ARM_USE_OIDC:        "true"
       ARM_USE_CLI:         "false"
       ARM_CLIENT_ID:       ${{ vars.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID:       ${{ vars.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      # Variables de Terraform (sensibles → secrets)
+      ARM_TENANT_ID:       ${{ vars.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
       TF_VAR_ml_endpoint_url: ${{ secrets.TF_VAR_ML_ENDPOINT_URL }}
       TF_VAR_ml_endpoint_key: ${{ secrets.TF_VAR_ML_ENDPOINT_KEY }}
 
@@ -55,6 +54,60 @@ jobs:
       - name: Terraform Validate
         working-directory: infraestructura
         run: terraform validate
+
+      - name: Import recursos existentes (idempotente)
+        working-directory: infraestructura
+        env:
+          ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          SUB: b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f
+          RG: rg-soc-proyecto
+        run: |
+          import_if_missing() {
+            local resource=$1
+            local id=$2
+            if ! terraform state show "$resource" &>/dev/null; then
+              echo "Importando $resource..."
+              terraform import "$resource" "$id" || echo "⚠️ No se pudo importar $resource (puede que no exista aún)"
+            else
+              echo "✅ $resource ya está en el state"
+            fi
+          }
+
+          import_if_missing "azurerm_resource_group.soc_rg" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}"
+
+          import_if_missing "azurerm_log_analytics_workspace.law" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.OperationalInsights/workspaces/log-soc-ml"
+
+          import_if_missing "azurerm_sentinel_log_analytics_workspace_onboarding.sentinel" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.OperationalInsights/workspaces/log-soc-ml"
+
+          import_if_missing "azurerm_storage_account.ml_storage" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Storage/storageAccounts/stsocsmlstorage"
+
+          import_if_missing "azurerm_application_insights.ml_insights" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Insights/components/appi-soc-ml"
+
+          import_if_missing "azurerm_key_vault.ml_kv" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.KeyVault/vaults/kvsocmlanom"
+
+          import_if_missing "azurerm_machine_learning_workspace.ml_workspace" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.MachineLearningServices/workspaces/mlw-soc-anomaly"
+
+          import_if_missing "azurerm_virtual_network.vnet" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Network/virtualNetworks/vnet-soc-ml"
+
+          import_if_missing "azurerm_subnet.subnet_main" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Network/virtualNetworks/vnet-soc-ml/subnets/subnet-soc-main"
+
+          import_if_missing "azurerm_logic_app_workflow.soc_playbook" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-anomaly-playbook"
+
+          import_if_missing "azurerm_logic_app_workflow.response_playbook" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Logic/workflows/soc-response-playbook"
+
+          import_if_missing "azurerm_network_security_group.soc_response_nsg" \
+            "/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Network/networkSecurityGroups/nsg-soc-response"
 
       - name: Terraform Plan
         working-directory: infraestructura
