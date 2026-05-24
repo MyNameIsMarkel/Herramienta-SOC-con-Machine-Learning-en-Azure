@@ -146,7 +146,7 @@ resource "azurerm_role_assignment" "logic_app_sentinel_contributor" {
 
 
 # ── AUTOMATION RULE: Sentinel dispara la Logic App ────────────────────────────
-
+/*
 resource "azurerm_sentinel_automation_rule" "trigger_ml_playbook" {
   name                       = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
   log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
@@ -162,3 +162,4 @@ resource "azurerm_sentinel_automation_rule" "trigger_ml_playbook" {
 
   depends_on = [azurerm_sentinel_log_analytics_workspace_onboarding.sentinel]
 }
+*/
