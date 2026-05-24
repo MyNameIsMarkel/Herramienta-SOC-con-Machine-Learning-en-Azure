@@ -144,7 +144,7 @@ resource "azurerm_role_assignment" "logic_app_sentinel_contributor" {
   principal_id         = azurerm_logic_app_workflow.soc_playbook.identity[0].principal_id
 }
 
-/*
+
 # ── AUTOMATION RULE: Sentinel dispara la Logic App ────────────────────────────
 
 resource "azurerm_sentinel_automation_rule" "trigger_ml_playbook" {
@@ -162,4 +162,3 @@ resource "azurerm_sentinel_automation_rule" "trigger_ml_playbook" {
 
   depends_on = [azurerm_sentinel_log_analytics_workspace_onboarding.sentinel]
 }
-*/
