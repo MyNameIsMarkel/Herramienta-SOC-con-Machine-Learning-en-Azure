@@ -10,13 +10,13 @@ terraform {
   # REQUISITO: crear el storage account y el container una sola vez antes del primer apply:
   #   az storage account create --name tfstatesocml --resource-group rg-soc-proyecto --location francecentral --sku Standard_LRS
   #   az storage container create --name tfstate --account-name tfstatesocml
-  backend "azurerm" {
-    use_oidc             = true
-    resource_group_name  = "rg-soc-proyecto"
-    storage_account_name = "tfstatesocml"
-    container_name       = "tfstate"
-    key                  = "terraform.tfstate"
-  }
+  # backend "azurerm" {
+  #   use_oidc             = true
+  #   resource_group_name  = "rg-soc-proyecto"
+  #   storage_account_name = "tfstatesocml"
+  #   container_name       = "tfstate"
+  #   key                  = "terraform.tfstate"
+  # }
 }
 
 provider "azurerm" {
