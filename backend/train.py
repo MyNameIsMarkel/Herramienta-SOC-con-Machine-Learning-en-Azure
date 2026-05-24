@@ -70,6 +70,11 @@ with mlflow.start_run():
 
     # Guardar modelo en formato MLflow
     mlflow.sklearn.save_model(pipeline, os.path.join(args.output_path, "mlflow_model"))
+    # Guardar también los pkl individuales que necesita score.py
+    scaler_fitted = pipeline.named_steps["scaler"]
+    model_fitted  = pipeline.named_steps["model"]
+    joblib.dump(scaler_fitted, os.path.join(args.output_path, "scaler.pkl"))
+    joblib.dump(model_fitted,  os.path.join(args.output_path, "isolation_forest.pkl"))
 
     # Feature names para inferencia posterior
     joblib.dump(list(features.columns), os.path.join(args.output_path, "feature_names.pkl"))
