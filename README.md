@@ -23,6 +23,9 @@ Azure ML Endpoint · Isolation Forest (inferencia)
 ↓
 Bloqueo IP en NSG (automático)
 
+## Arquitectura de Azure
+![imagen que muestra la Arquitectura de Azure](infraestructura/arquitectura-azure.png)
+
 ## Demo
 
 Dashboard en vivo: [https://stsocsmlstorage.z28.web.core.windows.net/](https://stsocsmlstorage.z28.web.core.windows.net/)
