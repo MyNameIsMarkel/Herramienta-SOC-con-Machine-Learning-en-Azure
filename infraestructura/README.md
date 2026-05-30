@@ -86,3 +86,59 @@ ml_workspace_name             = "mlw-soc-anomaly"
 response_playbook_name        = "soc-response-playbook"
 response_playbook_trigger_url = <sensitive>
 ```
+
+## Queries KQL — Azure Log Analytics
+
+Queries útiles para analizar los logs del sistema SOC desde Log Analytics Workspace (`log-soc-ml`).
+
+### Incidentes generados por el modelo ML
+
+```kql
+SecurityIncident
+| where Title contains "SOC-ML"
+| project TimeGenerated, Title, Severity, Status, Description
+| order by TimeGenerated desc
+| take 50
+```
+
+### Ejecuciones de la Logic App en las últimas 24h
+
+```kql
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.LOGIC"
+| where ResourceType == "WORKFLOWS"
+| where TimeGenerated > ago(24h)
+| project TimeGenerated, resource_workflowName_s, status_s, code_s
+| order by TimeGenerated desc
+```
+
+### Anomalías detectadas por hora
+
+```kql
+SecurityIncident
+| where Title contains "SOC-ML"
+| where TimeGenerated > ago(7d)
+| summarize Anomalias = count() by bin(TimeGenerated, 1h)
+| render timechart
+```
+
+### Errores del endpoint ML en Application Insights
+
+```kql
+requests
+| where success == false
+| where timestamp > ago(24h)
+| project timestamp, name, resultCode, duration, url
+| order by timestamp desc
+```
+
+### Actividad de bloqueo de IPs en el NSG
+
+```kql
+AzureDiagnostics
+| where Category == "NetworkSecurityGroupRuleCounter"
+| where ResourceGroup == "rg-soc-proyecto"
+| where TimeGenerated > ago(24h)
+| project TimeGenerated, ruleName_s, primaryIPv4Address_s, matchedConnections_d
+| order by TimeGenerated desc
+```
