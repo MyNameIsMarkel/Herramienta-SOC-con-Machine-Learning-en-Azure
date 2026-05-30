@@ -90,6 +90,7 @@ cd backend
 pytest tests/ -v
 ```
 
+> [!IMPORTANT]
 ## Nota IMPORTANTE sobre los GitHub Actions workflows
 
 El repositorio cuenta con dos workflows de GitHub Actions:
