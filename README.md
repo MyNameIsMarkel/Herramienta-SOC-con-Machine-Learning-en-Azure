@@ -7,6 +7,8 @@ Proyecto académico que implementa una herramienta de detección de anomalías d
 El sistema analiza tráfico de red utilizando un modelo de Machine Learning entrenado sobre datos reales de red (dataset CIC-IDS2017 y capturas Wireshark), detectando patrones anómalos que podrían indicar actividad maliciosa. Cuando se detecta una anomalía, el sistema crea automáticamente un incidente en Microsoft Sentinel y bloquea la IP maliciosa en el firewall de red. La infraestructura completa está desplegada en Azure mediante Terraform.
 
 ## Arquitectura
+
+```bash
 Monitor local (Python · Isolation Forest)
 ↓ cada 60s
 Azure Blob Storage (results.json)
@@ -22,6 +24,7 @@ Azure ML Endpoint · Isolation Forest (inferencia)
 + Logic App: soc-response-playbook
 ↓
 Bloqueo IP en NSG (automático)
+```
 
 ## Arquitectura de Azure
 ![imagen que muestra la Arquitectura de Azure](infraestructura/arquitectura-azure.png)
