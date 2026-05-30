@@ -547,20 +547,15 @@
   </div>
 
   <!-- ── SIDEBAR RIGHT ── -->
-  <div class="panel sidebar-right">
-    <div class="panel-title">Incidentes Sentinel</div>
-    <div id="incidents">
-      <div class="incident-item info">
-        <div class="incident-title">Sistema inicializado</div>
-        <div class="incident-meta">Sentinel · Esperando alertas del modelo ML</div>
-      </div>
+    <div class="panel sidebar-right">
+      <div class="panel-title">Incidentes Sentinel</div>
+      <div id="incidents"></div>
     </div>
-  </div>
 
   <!-- ── BOTTOM STATS ── -->
   <div class="bottom-stats">
     <div class="stat-box">
-      <div class="stat-num">52</div>
+      <div class="stat-num">11</div>
       <div class="stat-lbl">Features de red</div>
     </div>
     <div class="stat-box">
@@ -661,12 +656,55 @@ function animateArch(step) {
   const arrows = ['arr-1','arr-2','arr-3'];
   nodes.forEach(n => document.getElementById(n).className = 'arch-box');
   arrows.forEach(a => document.getElementById(a).className = 'arch-arrow');
-
   for (let i = 0; i <= step && i < nodes.length; i++) {
     document.getElementById(nodes[i]).className = 'arch-box ' + (i === step ? 'processing' : 'active');
     if (i < step && i < arrows.length) document.getElementById(arrows[i]).className = 'arch-arrow active';
   }
 }
+
+// ── LEER RESULTADOS DEL MONITOR LOCAL ───────────────────────────────────────
+let processedUpdates = new Set();
+async function fetchResults() {
+  try {
+    const res = await fetch('https://stsocsmlstorage.z28.web.core.windows.net/results.json?t=' + Date.now());
+    if (!res.ok) return;
+    const data = await res.json();
+
+    if (processedUpdates.has(data.updated)) return;
+    processedUpdates.add(data.updated);
+
+    document.getElementById('m-total').textContent   = data.total;
+    document.getElementById('m-anomaly').textContent = data.anomalies;
+
+    const avg = data.results.reduce((a,r) => a + r.score, 0) / data.results.length;
+    document.getElementById('m-score').textContent = avg.toFixed(3);
+
+    data.results.slice(0, 3).forEach(r => {
+      if (r.anomaly) {
+        addFeed(`<strong>Monitor</strong> — Anomalía detectada · score: ${r.score}`, 'ALERTA', 'badge-alert');
+        updateSparkline('spark-anomaly', 'high');
+      } else {
+        addFeed(`<strong>Monitor</strong> — Tráfico normal · score: ${r.score}`, 'OK', 'badge-ok');
+        updateSparkline('spark-total', 'active');
+      }
+    });
+
+    data.results.filter(r => r.anomaly).slice(0, 2).forEach(r => {
+      addIncident(
+        `Monitor SOC: Anomalía detectada`,
+        `Score: ${r.score} · ${new Date(r.timestamp).toLocaleTimeString('es-ES')}`,
+        'high'
+      );
+    });
+
+    termLog(`<span class="ok">✓ Monitor activo — datos actualizados ${new Date(data.updated).toLocaleTimeString('es-ES')}</span>`);
+
+  } catch(e) {
+    // Sin datos aún, silencioso
+  }
+}
+setInterval(fetchResults, 30000);
+setTimeout(fetchResults, 2000);
 
 // ── MAIN TEST ───────────────────────────────────────────────────────────────
 async function triggerTest(forceAnomaly) {
@@ -684,33 +722,22 @@ async function triggerTest(forceAnomaly) {
 
   termLog(`<span class="prompt">$</span> <span class="cmd">trigger-alert --name "${alertName}"</span>`);
   animateArch(0);
-
-  // Step 1: call ML endpoint directly
-  termLog(`<span class="dim">→ Construyendo vector de features (52 dims)...</span>`);
+  termLog(`<span class="dim">→ Construyendo vector de features...</span>`);
   animateArch(2);
-
-  // Build feature vector: anomaly = high values, normal = zeros
-  const featureVector = forceAnomaly
-    ? [443,999999,5000,4500000,1500,0,750,450,0,0,0,0,2500000,5000,200,150,500,0,999999,200,150,500,0,0,0,0,0,0,200,0,5000,0,0,1500,750,450,202500,0,1,1,750,4500000,65535,0,5000,20,0,0,0,0,0,0]
-    : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
 
   let mlResult = null;
   try {
     animateArch(3);
-    termLog(`<span class="dim">→ POST ${ML_URL.substring(0,50)}...</span>`);
     const mlResp = await fetch(ML_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ML_KEY}` },
-      body: JSON.stringify({ data: [featureVector] })
+      body: JSON.stringify({ data: [Array(11).fill(forceAnomaly ? 999999 : 0)] })
     });
-    if (mlResp.ok) {
-      mlResult = await mlResp.json();
-    }
+    if (mlResp.ok) mlResult = await mlResp.json();
   } catch(e) {
     termLog(`<span class="dim">→ CORS bloqueado (esperado desde browser). Usando resultado simulado.</span>`);
   }
 
-  // Simulate result if CORS blocked
   if (!mlResult) {
     const score = forceAnomaly ? -0.18 : 0.21;
     mlResult = [{ anomaly: forceAnomaly, score }];
@@ -720,7 +747,6 @@ async function triggerTest(forceAnomaly) {
   const isAnomaly = mlResult[0].anomaly;
   const score = mlResult[0].score.toFixed(4);
 
-  // Update stats
   totalAnalyzed++;
   scores.push(parseFloat(score));
   document.getElementById('m-total').textContent = totalAnalyzed;
@@ -741,7 +767,6 @@ async function triggerTest(forceAnomaly) {
     addFeed(`<strong>Normal</strong> — ${desc}`, 'OK', 'badge-ok');
   }
 
-  // Step 2: trigger Logic App
   termLog(`<span class="dim">→ Notificando Logic App...</span>`);
   animateArch(1);
   try {
@@ -774,7 +799,7 @@ async function triggerTest(forceAnomaly) {
 
 // ── INIT FEED ───────────────────────────────────────────────────────────────
 addFeed('Dashboard inicializado. Infraestructura Azure conectada.', 'INFO', 'badge-info');
-addFeed('<strong>Endpoint ML</strong> — soc-anomaly-endpoint · francecentral', 'ONLINE', 'badge-ok');
+addFeed('<strong>Monitor local</strong> — Isolation Forest · 634k conexiones entrenadas', 'ONLINE', 'badge-ok');
 addFeed('<strong>Microsoft Sentinel</strong> — log-soc-ml workspace activo', 'ONLINE', 'badge-ok');
 </script>
 </body>
