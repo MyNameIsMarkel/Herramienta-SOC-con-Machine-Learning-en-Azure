@@ -86,3 +86,16 @@ STORAGE_KEY=<clave del storage account>
 cd backend
 pytest tests/ -v
 ```
+
+## Nota IMPORTANTE sobre los GitHub Actions workflows
+
+El repositorio cuenta con dos workflows de GitHub Actions:
+
+| Workflow | Estado | Descripción |
+|---|---|---|
+| `Tests` |  Verde | Ejecuta los 24 tests (unitarios + integración) en cada push |
+| `Terraform` |  Falla esperada | Requiere un App Registration en Azure AD que no se puede crear desde la suscripción académica de EUNEIZ |
+
+El workflow de **Terraform** necesita un App Registration con credenciales OIDC para autenticarse en Azure desde GitHub Actions. La suscripción académica de EUNEIZ no permite crear App Registrations, por lo que este workflow no puede ejecutarse automáticamente desde CI/CD. La infraestructura se despliega manualmente desde local con `terraform apply` usando la sesión de `az login`.
+
+El workflow de **Tests** funciona correctamente y demuestra la integración de CI/CD con el pipeline de testing.
