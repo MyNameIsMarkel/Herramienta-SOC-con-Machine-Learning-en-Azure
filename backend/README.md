@@ -2,89 +2,92 @@
 
 [← Volver al README principal](../README.md)
 
-Módulo de Machine Learning para detección de anomalías en tráfico de red, basado en el algoritmo Isolation Forest y desplegado como endpoint REST en Azure ML.
+Módulo de Machine Learning para detección de anomalías en tráfico de red, basado en el algoritmo Isolation Forest.
 
 ## Modelo
 
 | Parámetro | Valor |
 |---|---|
 | Algoritmo | Isolation Forest |
-| Features | 52 (tráfico de red: paquetes, bytes, flags TCP, tiempos IAT...) |
+| Features | 11 (tráfico de red: puertos, bytes, tiempos, frecuencias...) |
 | N° estimadores | 100 |
 | Contamination | 0.05 (5% de anomalías esperadas) |
-| Dataset | CIC-IDS2017 (Monday — tráfico benigno + ataques) |
+| Dataset | Capturas reales de red (Wireshark + CIC-IDS2017) |
 | Preprocesado | StandardScaler + eliminación de infinitos y NaNs |
 
-El endpoint devuelve para cada conexión:
+El modelo devuelve para cada conexión:
 ```json
-[{"anomaly": true, "score": -0.18}]
+{"anomaly": true, "score": -0.18}
 ```
 Cuanto más negativo el score, más anómala es la conexión.
 
-## Endpoint en Azure ML
+## Monitor en tiempo real
 
-| Campo | Valor |
-|---|---|
-| Nombre | `soc-anomaly-endpoint` |
-| URL | `https://soc-anomaly-endpoint.francecentral.inference.ml.azure.com/score` |
-| Autenticación | Bearer token (clave en Key Vault) |
-| Región | France Central |
+El script `monitor.py` analiza tráfico cada 60 segundos y sube los resultados a Azure Blob Storage, donde el dashboard los recoge automáticamente.
+
+```bash
+# Arrancar el monitor
+cd backend
+python monitor.py
+```
+
+Requiere el archivo `.env`:
+STORAGE_KEY=<clave del storage account de Azure>
 
 ## Estructura
-
-```
 backend/
-├── train.py          # Entrenamiento del modelo sobre CIC-IDS2017
-├── score.py          # Script de inferencia para el endpoint Azure ML
+├── train.py          # Entrenamiento del modelo
+├── score.py          # Script de inferencia para Azure ML
+├── monitor.py        # Monitor local con inferencia en tiempo real
 ├── predict.py        # Predicción local sobre un CSV
 ├── evaluate.py       # Evaluación con etiquetas reales
 ├── deploy.py         # Despliegue del endpoint en Azure ML
-├── submit_job.py     # Lanzar entrenamiento como Job en Azure ML
-├── conda.yml         # Entorno Conda del endpoint
-├── requirements.txt  # Dependencias Python locales
+├── requirements.txt  # Dependencias Python
+├── .env              # Variables de entorno (NO subir a Git)
 ├── model/
 │   ├── isolation_forest.pkl   # Modelo entrenado
 │   ├── scaler.pkl             # StandardScaler ajustado
-│   └── feature_names.pkl      # Lista de las 52 features
-└── scoring/
-    ├── score.py      # Script de inferencia (versión para el deployment)
-    └── conda.yml     # Entorno del deployment
+│   └── feature_names.pkl      # Lista de las 11 features
+├── scoring/
+│   ├── score.py      # Script de inferencia para Azure ML deployment
+│   └── conda.yml     # Entorno del deployment
+└── tests/
+├── test_model.py        # 18 tests unitarios
+└── test_integracion.py  # 6 tests de integración
+
+## Tests
+
+```bash
+# Ejecutar todos los tests
+cd backend
+pytest tests/ -v
+
+# Solo unitarios
+pytest tests/test_model.py -v
+
+# Solo integración
+pytest tests/test_integracion.py -v
 ```
+
+### Cobertura de tests
+
+| Suite | Tests | Qué verifica |
+|---|---|---|
+| `TestModelLoad` | 5 | Carga correcta de los pkl |
+| `TestScaler` | 3 | Transformación del scaler |
+| `TestPredictions` | 6 | Predicciones válidas del modelo |
+| `TestScoreScript` | 2 | Formato JSON de salida |
+| `TestMonitorDataFormat` | 2 | Formato del payload del monitor |
+| `TestFlujoInferencia` | 3 | Flujo completo datos→modelo→JSON |
+| `TestFlujoMonitor` | 3 | Ciclo completo del monitor |
 
 ## Entrenamiento local
 
 ```bash
 pip install -r requirements.txt
-python train.py --data_path data/cicids2017_monday.csv --output_path model/
-```
-
-## Despliegue del endpoint
-
-```bash
-pip install azure-ai-ml azure-identity
-python deploy.py
-```
-
-## Prueba del endpoint
-
-```python
-import urllib.request, json, joblib
-
-url = "https://soc-anomaly-endpoint.francecentral.inference.ml.azure.com/score"
-key = "<clave del endpoint>"
-features = joblib.load("model/feature_names.pkl")
-
-payload = json.dumps({"data": [[0] * len(features)]}).encode()
-req = urllib.request.Request(url, data=payload, headers={
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {key}"
-})
-print(urllib.request.urlopen(req).read().decode())
-# [{"anomaly": false, "score": 0.216}]
+python train.py --data_path data/tu_dataset.csv --output_path model/
 ```
 
 ## Dataset
 
-El modelo se entrena sobre el dataset **CIC-IDS2017** (Canadian Institute for Cybersecurity). Se usa la captura del lunes que contiene tráfico benigno, lo que permite entrenar el modelo sin etiquetas de ataque (aprendizaje no supervisado).
-
-Los ficheros CSV no están incluidos en el repositorio por su tamaño (>100MB). Descárgalos desde [https://www.unb.ca/cic/datasets/ids-2017.html](https://www.unb.ca/cic/datasets/ids-2017.html) y colócalos en `backend/data/`.
+Los ficheros CSV no están incluidos en el repositorio por su tamaño. El modelo actual fue entrenado con capturas reales de tráfico de red con 11 features: `No., Time, Length, cumilative_bytes, delta time, fw1_mon_if/dir, freq, RSSI, TX rate, packet length, rel_time`.
