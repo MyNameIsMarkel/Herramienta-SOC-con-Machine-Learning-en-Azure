@@ -8,3 +8,6 @@ crash.log
 # Datos de entrenamiento (demasiado grandes para Git)
 ml-model/data/*.csv
 backend/data/*.csv
+# Variables de entorno locales
+.env
+backend/.env

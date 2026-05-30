@@ -6,6 +6,9 @@ import pandas as pd
 from datetime import datetime
 from azure.storage.blob import BlobServiceClient
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Cargar modelo
 model         = joblib.load("model/isolation_forest.pkl")
 scaler        = joblib.load("model/scaler.pkl")
