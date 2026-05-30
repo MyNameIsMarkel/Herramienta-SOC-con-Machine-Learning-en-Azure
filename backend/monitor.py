@@ -1,12 +1,13 @@
+import os
 import json
 import time
 import joblib
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
 
-from dotenv import load_dotenv
 load_dotenv()
 
 # Cargar modelo
