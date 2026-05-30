@@ -11,3 +11,7 @@ backend/data/*.csv
 # Variables de entorno locales
 .env
 backend/.env
+# Python cache
+**/__pycache__/
+*.pyc
+.pytest_cache/
