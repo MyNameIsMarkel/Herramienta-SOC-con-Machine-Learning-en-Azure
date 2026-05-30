@@ -1,0 +1,24 @@
+repos:
+  - repo: local
+    hooks:
+      - id: tests-unitarios
+        name: Tests unitarios del modelo ML
+        entry: bash -c "cd backend && pytest tests/test_model.py -v --tb=short"
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: test-integracion
+        name: Test de integración del flujo ML
+        entry: bash -c "cd backend && pytest tests/test_integracion.py -v --tb=short"
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-json
+      - id: detect-private-key
