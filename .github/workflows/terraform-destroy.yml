@@ -1,4 +1,4 @@
-name: 💣 Terraform Destroy — Eliminar infraestructura
+name:  Terraform Destroy — Eliminar infraestructura
 
 on:
   workflow_dispatch:
@@ -14,18 +14,9 @@ permissions:
 
 jobs:
   terraform-destroy:
-    name: Terraform Init + Destroy
+    name: Terraform Init + Validate
     runs-on: ubuntu-latest
     if: github.event.inputs.confirm == 'destroy'
-
-    env:
-      ARM_USE_OIDC:        "true"
-      ARM_USE_CLI:         "false"
-      ARM_CLIENT_ID:       ${{ vars.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID:       ${{ vars.ARM_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
-      TF_VAR_ml_endpoint_url: ${{ secrets.TF_VAR_ML_ENDPOINT_URL }}
-      TF_VAR_ml_endpoint_key: ${{ secrets.TF_VAR_ML_ENDPOINT_KEY }}
 
     steps:
       - name: Checkout
@@ -36,68 +27,18 @@ jobs:
         with:
           terraform_version: "~1.9"
 
-      - name: Get OIDC Token
-        id: oidc
-        run: |
-          TOKEN=$(curl -s \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" \
-            | jq -r '.value')
-          echo "token=$TOKEN" >> $GITHUB_OUTPUT
-
-      - name: Azure CLI login via OIDC
-        uses: azure/login@v2
-        with:
-          client-id:       ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id:       ${{ vars.ARM_TENANT_ID }}
-          subscription-id: ${{ vars.ARM_SUBSCRIPTION_ID }}
-
-      - name: Eliminar endpoint y deployment ML (recursos fuera de Terraform)
-        run: |
-          echo "Eliminando deployment 'blue'..."
-          az ml online-deployment delete \
-            --name blue \
-            --endpoint-name soc-anomaly-endpoint \
-            --workspace-name mlw-soc-anomaly \
-            --resource-group rg-soc-proyecto \
-            --yes --no-wait || echo "⚠️ Deployment no encontrado, continuando..."
-
-          echo "Esperando a que el deployment se elimine..."
-          for i in $(seq 1 20); do
-            STATUS=$(az ml online-deployment show \
-              --name blue \
-              --endpoint-name soc-anomaly-endpoint \
-              --workspace-name mlw-soc-anomaly \
-              --resource-group rg-soc-proyecto \
-              --query "provisioning_state" -o tsv 2>/dev/null || echo "Deleted")
-            echo "Estado deployment: $STATUS"
-            if [[ "$STATUS" == "Deleted" || "$STATUS" == "" ]]; then
-              break
-            fi
-            sleep 30
-          done
-
-          echo "Eliminando endpoint 'soc-anomaly-endpoint'..."
-          az ml online-endpoint delete \
-            --name soc-anomaly-endpoint \
-            --workspace-name mlw-soc-anomaly \
-            --resource-group rg-soc-proyecto \
-            --yes || echo "⚠️ Endpoint no encontrado, continuando..."
-
       - name: Terraform Init
         working-directory: infraestructura
-        run: terraform init
-        env:
-          ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: terraform init -backend=false
 
-      - name: Terraform Plan Destroy
+      - name: Terraform Validate
         working-directory: infraestructura
-        run: terraform plan -destroy -out=tfplan-destroy
-        env:
-          ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: terraform validate
 
-      - name: Terraform Destroy
-        working-directory: infraestructura
-        run: terraform apply -auto-approve tfplan-destroy
-        env:
-          ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+      - name: Aviso — autenticación Azure requerida
+        run: |
+          echo " Para ejecutar Destroy contra Azure es necesario:"
+          echo "   1. Crear un App Registration en Azure AD"
+          echo "   2. Configurar los secrets AZURE_CLIENT_ID, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID"
+          echo "   3. Ejecutar desde local: terraform destroy"
+          echo " Validación del código Terraform completada correctamente"
