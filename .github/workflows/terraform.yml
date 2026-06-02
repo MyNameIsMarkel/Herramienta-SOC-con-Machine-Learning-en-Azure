@@ -12,17 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  terraform:
-    name: Terraform Plan & Apply
+  terraform-validate:
+    name: Terraform Validate
     runs-on: ubuntu-latest
-    env:
-      ARM_USE_OIDC:        "true"
-      ARM_USE_CLI:         "false"
-      ARM_CLIENT_ID:       ${{ vars.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID:       ${{ vars.ARM_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
-      TF_VAR_ml_endpoint_url: ${{ secrets.TF_VAR_ML_ENDPOINT_URL }}
-      TF_VAR_ml_endpoint_key: ${{ secrets.TF_VAR_ML_ENDPOINT_KEY }}
 
     steps:
       - name: Checkout
@@ -33,30 +25,14 @@ jobs:
         with:
           terraform_version: "~1.9"
 
-      - name: Get OIDC Token
-        id: oidc
-        run: |
-          TOKEN=$(curl -s \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" \
-            | jq -r '.value')
-          echo "token=$TOKEN" >> $GITHUB_OUTPUT
-
-      - name: Terraform Init
+      - name: Terraform Init (local)
         working-directory: infraestructura
-        run: terraform init
-        env:
-          ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: terraform init -backend=false
 
-      - name: Terraform Plan
+      - name: Terraform Validate
         working-directory: infraestructura
-        run: terraform plan
-        env:
-          ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: terraform validate
 
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      - name: Terraform Format check
         working-directory: infraestructura
-        run: terraform apply -auto-approve
-        env:
-          ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: terraform fmt -check -recursive
