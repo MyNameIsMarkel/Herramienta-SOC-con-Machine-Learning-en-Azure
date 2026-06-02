@@ -35,6 +35,7 @@ Requiere el archivo `.env`:
 STORAGE_KEY=<clave del storage account de Azure>
 
 ## Estructura
+```bash
 backend/
 ├── train.py          # Entrenamiento del modelo
 ├── score.py          # Script de inferencia para Azure ML
@@ -54,6 +55,7 @@ backend/
 └── tests/
 ├── test_model.py        # 18 tests unitarios
 └── test_integracion.py  # 6 tests de integración
+```
 
 ## Tests
 
