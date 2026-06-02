@@ -43,8 +43,10 @@ az storage blob upload \
 ```
 
 ## Estructura
+```bash
 frontend/
 └── index.html    # Aplicación completa (HTML + CSS + JS en un solo fichero)
+```
 
 ## Notas
 
