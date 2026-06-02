@@ -96,21 +96,16 @@ pytest tests/ -v
 > [!IMPORTANT]
 ## Nota IMPORTANTE sobre los GitHub Actions workflows
 
-## Nota sobre los GitHub Actions workflows
+| Workflow | Trigger | Estado | Descripción |
+|---|---|---|---|
+| `Tests` | Push / PR | ✅ Automático | 24 tests unitarios e integración |
+| `Terraform` | Push / PR | ✅ Automático | Validate + fmt del código IaC |
+| `Terraform Apply` | Manual | ✅ Manual | Validate + instrucciones para deploy |
+| `Terraform Destroy` | Manual | ✅ Manual | Validate + instrucciones para destroy |
 
-| Workflow | Estado | Descripción |
-|---|---|---|
-| `Tests` | ✅ Verde | Ejecuta los 24 tests (unitarios + integración) en cada push |
-| `Terraform` | ✅ Verde | Valida y comprueba formato del código Terraform sin conectarse a Azure |
-| `Terraform Apply` | Manual | Requiere App Registration — se ejecuta manualmente desde local |
-| `Terraform Destroy` | Manual | Requiere App Registration — se ejecuta manualmente desde local |
+Los workflows de **Apply** y **Destroy** validan el código Terraform y muestran las instrucciones necesarias para completar el despliegue. El paso de `terraform apply` contra Azure requiere ejecutarse desde local con `az login` porque la suscripción académica de EUNEIZ no permite crear App Registrations con credenciales OIDC para GitHub Actions.
 
-El workflow de **Terraform** ejecuta `terraform validate` y `terraform fmt` en cada push, comprobando que el código de infraestructura es sintácticamente correcto sin necesitar credenciales de Azure.
-
-Los workflows de **Apply** y **Destroy** requieren un App Registration con credenciales OIDC para autenticarse en Azure desde GitHub Actions. La suscripción académica de EUNEIZ no permite crear App Registrations. Para completar esta integración en un entorno sin restricciones bastaría con:
-
+Para completar la autenticación automática en un entorno sin restricciones:
 1. Crear un App Registration en Azure AD con credencial federada para GitHub Actions
-2. Añadir los secrets `AZURE_CLIENT_ID`, `ARM_TENANT_ID`, `ARM_SUBSCRIPTION_ID` al repositorio
-3. Asignar el rol **Contributor** al App Registration en la suscripción
-
-La infraestructura se despliega actualmente desde local con `terraform apply` usando la sesión de `az login`.
+2. Añadir `AZURE_CLIENT_ID`, `ARM_TENANT_ID`, `ARM_SUBSCRIPTION_ID` como secrets del repositorio
+3. Asignar rol **Contributor** al App Registration en la suscripción
