@@ -96,13 +96,21 @@ pytest tests/ -v
 > [!IMPORTANT]
 ## Nota IMPORTANTE sobre los GitHub Actions workflows
 
-El repositorio cuenta con dos workflows de GitHub Actions:
+## Nota sobre los GitHub Actions workflows
 
 | Workflow | Estado | Descripción |
 |---|---|---|
-| `Tests` |  Verde | Ejecuta los 24 tests (unitarios + integración) en cada push |
-| `Terraform` |  Falla esperada | Requiere un App Registration en Azure AD que no se puede crear desde la suscripción académica de EUNEIZ |
+| `Tests` | ✅ Verde | Ejecuta los 24 tests (unitarios + integración) en cada push |
+| `Terraform` | ✅ Verde | Valida y comprueba formato del código Terraform sin conectarse a Azure |
+| `Terraform Apply` | Manual | Requiere App Registration — se ejecuta manualmente desde local |
+| `Terraform Destroy` | Manual | Requiere App Registration — se ejecuta manualmente desde local |
 
-El workflow de **Terraform** necesita un App Registration con credenciales OIDC para autenticarse en Azure desde GitHub Actions. La suscripción académica de EUNEIZ no permite crear App Registrations, por lo que este workflow no puede ejecutarse automáticamente desde CI/CD. La infraestructura se despliega manualmente desde local con `terraform apply` usando la sesión de `az login`.
+El workflow de **Terraform** ejecuta `terraform validate` y `terraform fmt` en cada push, comprobando que el código de infraestructura es sintácticamente correcto sin necesitar credenciales de Azure.
 
-El workflow de **Tests** funciona correctamente y demuestra la integración de CI/CD con el pipeline de testing.
+Los workflows de **Apply** y **Destroy** requieren un App Registration con credenciales OIDC para autenticarse en Azure desde GitHub Actions. La suscripción académica de EUNEIZ no permite crear App Registrations. Para completar esta integración en un entorno sin restricciones bastaría con:
+
+1. Crear un App Registration en Azure AD con credencial federada para GitHub Actions
+2. Añadir los secrets `AZURE_CLIENT_ID`, `ARM_TENANT_ID`, `ARM_SUBSCRIPTION_ID` al repositorio
+3. Asignar el rol **Contributor** al App Registration en la suscripción
+
+La infraestructura se despliega actualmente desde local con `terraform apply` usando la sesión de `az login`.
