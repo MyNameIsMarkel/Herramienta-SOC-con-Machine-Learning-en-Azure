@@ -1,12 +1,4 @@
-# Herramienta SOC con Machine Learning en Azure
-
-Proyecto académico que implementa una herramienta de detección de anomalías de red para un Centro de Operaciones de Seguridad (SOC), integrando Machine Learning con Microsoft Azure y Sentinel.
-
-## Descripción
-
-El sistema analiza tráfico de red utilizando un modelo de Machine Learning entrenado sobre datos reales de red (dataset CIC-IDS2017 y capturas Wireshark), detectando patrones anómalos que podrían indicar actividad maliciosa. Cuando se detecta una anomalía, el sistema crea automáticamente un incidente en Microsoft Sentinel y bloquea la IP maliciosa en el firewall de red. La infraestructura completa está desplegada en Azure mediante Terraform.
-
-## Arquitectura
+Gestión por ramas y Pull Requests
 
 ```bash
 Monitor local (Python · Isolation Forest)
@@ -48,12 +40,12 @@ Dashboard en vivo: [https://stsocsmlstorage.z28.web.core.windows.net/](https://s
 | Cloud | Microsoft Azure (francecentral) |
 | IaC | Terraform (azurerm ~> 4.0) |
 | ML | Isolation Forest (scikit-learn) |
-| Dataset | CIC-IDS2017 + capturas Wireshark (11 features) |
+| Dataset | Capturas reales de red Wireshark (11 features) |
 | Seguridad | Microsoft Sentinel · Azure Key Vault · NSG |
 | Automatización | Azure Logic Apps (2 playbooks) |
 | Monitorización | Azure Monitor · Application Insights · Azure Logs |
 | Frontend | HTML/JS · Azure Static Website |
-| CI/CD | GitHub Actions · OIDC (sin credenciales) |
+| CI/CD | GitHub Actions · OIDC · Managed Identity |
 | Testing | pytest · pre-commit hooks |
 | Lenguaje | Python 3.11 |
 
@@ -63,12 +55,13 @@ Dashboard en vivo: [https://stsocsmlstorage.z28.web.core.windows.net/](https://s
 - [x] Azure ML Workspace con dependencias
 - [x] Entrenamiento Isolation Forest sobre datos reales de red
 - [x] Monitor local con inferencia ML en tiempo real
+- [x] Logging estructurado DEBUG/INFO/WARNING/ERROR → Log Analytics
 - [x] Results subidos a Azure Blob Storage cada 60s
 - [x] Secrets en Key Vault con Managed Identity
 - [x] Logic App de detección (Sentinel ↔ ML ↔ Incidentes)
 - [x] Playbook de respuesta automática (bloqueo IP en NSG)
 - [x] Dashboard de monitorización (Azure Static Website)
-- [x] CI/CD con GitHub Actions y autenticación OIDC
+- [x] CI/CD con GitHub Actions y autenticación OIDC via Managed Identity
 - [x] Azure Monitor con alertas métricas
 - [x] Azure Logs con conectores de datos Sentinel
 - [x] Tests unitarios (pytest · 18 tests)
@@ -84,7 +77,11 @@ python monitor.py
 ```
 
 Requiere el archivo `backend/.env` con:
+```bash
 STORAGE_KEY=<clave del storage account>
+LOG_WORKSPACE_ID=<id del log analytics workspace>
+LOG_WORKSPACE_KEY=<clave del log analytics workspace>
+```
 
 ## Ejecutar los tests
 
@@ -93,19 +90,30 @@ cd backend
 pytest tests/ -v
 ```
 
-> [!IMPORTANT]
-## Nota IMPORTANTE sobre los GitHub Actions workflows
+## Nota sobre los GitHub Actions workflows
 
-| Workflow | Trigger | Estado | Descripción |
-|---|---|---|---|
-| `Tests` | Push / PR | ✅ Automático | 24 tests unitarios e integración |
-| `Terraform` | Push / PR | ✅ Automático | Validate + fmt del código IaC |
-| `Terraform Apply` | Manual | ✅ Manual | Validate + instrucciones para deploy |
-| `Terraform Destroy` | Manual | ✅ Manual | Validate + instrucciones para destroy |
+| Workflow | Trigger | Descripción |
+|---|---|---|
+| `Tests` | Push / PR automático | 24 tests unitarios e integración |
+| `Apply — Todo el proyecto` | Manual | Infraestructura + frontend + backend |
+| `Apply — Solo infraestructura` | Manual | Terraform apply |
+| `Apply — Frontend` | Manual | Sube dashboard al Storage |
+| `Apply — Backend` | Manual | Entrena modelo y pasa tests |
+| `Destroy — Todo el proyecto` | Manual | Elimina toda la infraestructura |
+| `Destroy — Solo infraestructura` | Manual | Terraform destroy |
+| `Destroy — Frontend` | Manual | Elimina dashboard del Storage |
+| `Destroy — Backend` | Manual | Elimina endpoint y modelo ML |
+| `Terraform Apply` | Manual | Apply con imports de recursos existentes |
+| `Terraform Destroy` | Manual | Destroy completo |
 
-Los workflows de **Apply** y **Destroy** validan el código Terraform y muestran las instrucciones necesarias para completar el despliegue. El paso de `terraform apply` contra Azure requiere ejecutarse desde local con `az login` porque la suscripción académica de EUNEIZ no permite crear App Registrations con credenciales OIDC para GitHub Actions.
+La autenticación con Azure se realiza mediante **OIDC con Managed Identity** (`github-actions-identity`) sin necesidad de client secrets. La Managed Identity tiene rol **Contributor** en la suscripción y **Storage Blob Data Contributor** en el storage account.
 
-Para completar la autenticación automática en un entorno sin restricciones:
-1. Crear un App Registration en Azure AD con credencial federada para GitHub Actions
-2. Añadir `AZURE_CLIENT_ID`, `ARM_TENANT_ID`, `ARM_SUBSCRIPTION_ID` como secrets del repositorio
-3. Asignar rol **Contributor** al App Registration en la suscripción
+### Crear la Managed Identity (solo una vez)
+
+```bash
+az identity create --name "github-actions-identity" --resource-group rg-soc-proyecto
+az role assignment create --assignee "<principalId>" --role Contributor --scope /subscriptions/<subscriptionId>
+az role assignment create --assignee "<principalId>" --role "Storage Blob Data Contributor" --scope /subscriptions/<subscriptionId>/resourceGroups/rg-soc-proyecto/providers/Microsoft.Storage/storageAccounts/stsocsmlstorage
+az identity federated-credential create --name "github-main" --identity-name "github-actions-identity" --resource-group rg-soc-proyecto --issuer "https://token.actions.githubusercontent.com" --subject "repo:<org>/<repo>:ref:refs/heads/main" --audiences "api://AzureADTokenExchange"
+az identity federated-credential create --name "github-pr" --identity-name "github-actions-identity" --resource-group rg-soc-proyecto --issuer "https://token.actions.githubusercontent.com" --subject "repo:<org>/<repo>:pull_request" --audiences "api://AzureADTokenExchange"
+```
