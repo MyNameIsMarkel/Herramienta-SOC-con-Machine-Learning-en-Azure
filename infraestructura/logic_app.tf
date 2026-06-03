@@ -48,8 +48,8 @@ resource "azurerm_logic_app_action_custom" "call_ml_endpoint" {
       }
       body = {
         data = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
       }
     }
     runAfter = {}
@@ -63,11 +63,11 @@ resource "azurerm_logic_app_action_custom" "parse_ml_response" {
   logic_app_id = azurerm_logic_app_workflow.soc_playbook.id
 
   body = jsonencode({
-    type   = "ParseJson"
+    type = "ParseJson"
     inputs = {
       content = "@body('Call_ML_Endpoint')"
       schema = {
-        type  = "array"
+        type = "array"
         items = {
           type = "object"
           properties = {
@@ -125,13 +125,13 @@ resource "azurerm_logic_app_action_custom" "check_anomaly" {
         }
       }
     }
-    else     = { actions = {} }
+    else = { actions = {} }
     runAfter = {
       Parse_ML_Response = ["Succeeded"]
     }
   })
 
-    depends_on = [azurerm_logic_app_action_custom.parse_ml_response]
+  depends_on = [azurerm_logic_app_action_custom.parse_ml_response]
 
 }
 

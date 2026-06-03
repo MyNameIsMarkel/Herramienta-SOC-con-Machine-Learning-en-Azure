@@ -6,7 +6,7 @@ resource "azurerm_network_security_group" "soc_response_nsg" {
   name                = "nsg-soc-response"
   location            = azurerm_resource_group.soc_rg.location
   resource_group_name = azurerm_resource_group.soc_rg.name
-  tags = { project = "soc-ml" }
+  tags                = { project = "soc-ml" }
 }
 
 # ── LOGIC APP ─────────────────────────────────────────────────────────────────
@@ -45,8 +45,8 @@ resource "azurerm_logic_app_action_custom" "block_ip_nsg" {
   body = jsonencode({
     type = "Http"
     inputs = {
-      method = "PUT"
-      uri    = "https://management.azure.com/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${azurerm_resource_group.soc_rg.name}/providers/Microsoft.Network/networkSecurityGroups/nsg-soc-response/securityRules/block-malicious-ip?api-version=2023-05-01"
+      method  = "PUT"
+      uri     = "https://management.azure.com/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${azurerm_resource_group.soc_rg.name}/providers/Microsoft.Network/networkSecurityGroups/nsg-soc-response/securityRules/block-malicious-ip?api-version=2023-05-01"
       headers = { "Content-Type" = "application/json" }
       body = {
         properties = {
