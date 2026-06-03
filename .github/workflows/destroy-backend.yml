@@ -1,0 +1,48 @@
+name:  Destroy — Backend (modelo ML)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Escribe "destroy" para confirmar'
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy-backend:
+    name: Eliminar endpoint y modelo ML
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'destroy'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.ARM_TENANT_ID }}
+          subscription-id: ${{ vars.ARM_SUBSCRIPTION_ID }}
+
+      - name: Eliminar deployment y endpoint ML
+        run: |
+          echo "Eliminando deployment blue..."
+          az ml online-deployment delete \
+            --name blue \
+            --endpoint-name soc-anomaly-endpoint \
+            --workspace-name mlw-soc-anomaly \
+            --resource-group rg-soc-proyecto \
+            --yes --no-wait || echo " Deployment no encontrado"
+
+          echo "Eliminando endpoint..."
+          az ml online-endpoint delete \
+            --name soc-anomaly-endpoint \
+            --workspace-name mlw-soc-anomaly \
+            --resource-group rg-soc-proyecto \
+            --yes || echo " Endpoint no encontrado"
+
+          echo " Backend eliminado"

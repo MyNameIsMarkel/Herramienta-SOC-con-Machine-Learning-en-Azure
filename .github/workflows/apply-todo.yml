@@ -1,0 +1,103 @@
+name:  Apply — Todo el proyecto
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Escribe "apply" para confirmar'
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply-todo:
+    name: Apply infraestructura + frontend + backend
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'apply'
+
+    env:
+      ARM_USE_OIDC:        "true"
+      ARM_USE_CLI:         "false"
+      ARM_CLIENT_ID:       ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID:       ${{ vars.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.ARM_SUBSCRIPTION_ID }}
+      TF_VAR_ml_endpoint_url: ${{ secrets.TF_VAR_ML_ENDPOINT_URL }}
+      TF_VAR_ml_endpoint_key: ${{ secrets.TF_VAR_ML_ENDPOINT_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.9"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Get OIDC Token
+        id: oidc
+        run: |
+          TOKEN=$(curl -s \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" \
+            | jq -r '.value')
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.ARM_TENANT_ID }}
+          subscription-id: ${{ vars.ARM_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init + Apply
+        working-directory: infraestructura
+        run: |
+          terraform init -backend=false
+          terraform apply -auto-approve \
+            -var="ml_endpoint_url=${{ secrets.TF_VAR_ML_ENDPOINT_URL }}" \
+            -var="ml_endpoint_key=${{ secrets.TF_VAR_ML_ENDPOINT_KEY }}"
+        env:
+          ARM_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+
+      - name: Instalar dependencias Python
+        run: pip install -r backend/requirements.txt
+
+      - name: Entrenar modelo ML
+        run: |
+          cd backend
+          python -c "
+          import numpy as np, joblib, os
+          from sklearn.ensemble import IsolationForest
+          from sklearn.preprocessing import StandardScaler
+          features = ['No.','Time','Length','cumilative_bytes','delta time','fw1_mon_if/dir','freq','RSSI','TX rate','packet length','rel_time']
+          n = 5000
+          X = np.random.normal(loc=50, scale=10, size=(n, len(features)))
+          X = np.clip(X, 0, 200)
+          scaler = StandardScaler()
+          X_scaled = scaler.fit_transform(X)
+          model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+          model.fit(X_scaled)
+          os.makedirs('model', exist_ok=True)
+          joblib.dump(model, 'model/isolation_forest.pkl')
+          joblib.dump(scaler, 'model/scaler.pkl')
+          joblib.dump(features, 'model/feature_names.pkl')
+          print('Modelo entrenado')
+          "
+
+      - name: Subir dashboard al Storage
+        run: |
+          az storage blob upload \
+            --account-name stsocsmlstorage \
+            --container-name '$web' \
+            --name index.html \
+            --file frontend/index.html \
+            --content-type "text/html" \
+            --auth-mode login \
+            --overwrite

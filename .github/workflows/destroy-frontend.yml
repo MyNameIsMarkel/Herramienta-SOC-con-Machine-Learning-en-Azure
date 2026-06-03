@@ -1,0 +1,38 @@
+name:  Destroy — Frontend (dashboard)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Escribe "destroy" para confirmar'
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy-frontend:
+    name: Eliminar dashboard de Azure Storage
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'destroy'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.ARM_TENANT_ID }}
+          subscription-id: ${{ vars.ARM_SUBSCRIPTION_ID }}
+
+      - name: Eliminar index.html
+        run: |
+          az storage blob delete \
+            --account-name stsocsmlstorage \
+            --container-name '$web' \
+            --name index.html \
+            --auth-mode login
+          echo " Dashboard eliminado"
