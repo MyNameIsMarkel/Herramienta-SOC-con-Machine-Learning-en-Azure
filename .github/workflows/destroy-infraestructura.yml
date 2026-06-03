@@ -44,11 +44,11 @@ jobs:
             | jq -r '.value')
           echo "token=$TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Terraform Init + Destroy
+      - name: Terraform Init + Apply
         working-directory: infraestructura
         run: |
-          terraform init -backend=false
-          terraform apply -destroy -auto-approve \
+          terraform init
+          terraform apply -auto-approve \
             -var="ml_endpoint_url=${{ secrets.TF_VAR_ML_ENDPOINT_URL }}" \
             -var="ml_endpoint_key=${{ secrets.TF_VAR_ML_ENDPOINT_KEY }}"
         env:
