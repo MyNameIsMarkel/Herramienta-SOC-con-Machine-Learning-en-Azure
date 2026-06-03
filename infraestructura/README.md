@@ -87,6 +87,29 @@ response_playbook_name        = "soc-response-playbook"
 response_playbook_trigger_url = <sensitive>
 ```
 
+## Autenticación CI/CD — Managed Identity
+
+La autenticación de GitHub Actions con Azure se realiza mediante una **User Assigned Managed Identity** con federated credentials, sin necesidad de client secrets ni App Registrations con permisos de administrador.
+
+| Recurso | Valor |
+|---|---|
+| Nombre | `github-actions-identity` |
+| Client ID | `412e9fb1-ac39-4e4a-95bc-528e18693a9e` |
+| Principal ID | `0f8bfa01-82f9-41b8-b5f2-d884db8b6952` |
+| Rol en suscripción | Contributor |
+| Rol en Storage | Storage Blob Data Contributor |
+
+Este recurso se creó manualmente fuera de Terraform porque la suscripción académica de EUNEIZ no permite crear App Registrations desde la CLI ni el portal, pero sí permite crear Managed Identities como recursos de Azure normales.
+
+### Variables requeridas en GitHub
+
+| Variable | Valor |
+|---|---|
+| `AZURE_CLIENT_ID` | `412e9fb1-ac39-4e4a-95bc-528e18693a9e` |
+| `ARM_TENANT_ID` | `78f3a279-48c8-4670-9162-a63c451c9fae` |
+| `ARM_SUBSCRIPTION_ID` | `b1fca3a5-29b1-49e6-b2dd-6f9cb5dbbc2f` |
+
+
 ## Queries KQL — Azure Log Analytics
 
 Queries útiles para analizar los logs del sistema SOC desde Log Analytics Workspace (`log-soc-ml`).
