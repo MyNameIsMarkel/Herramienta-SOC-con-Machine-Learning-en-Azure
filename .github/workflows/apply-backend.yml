@@ -1,0 +1,49 @@
+name:  Apply — Backend (modelo ML)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply-backend:
+    name: Entrenar y registrar modelo ML
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install -r backend/requirements.txt
+
+      - name: Ejecutar tests
+        run: |
+          cd backend
+          python -c "
+          import numpy as np, joblib, os
+          from sklearn.ensemble import IsolationForest
+          from sklearn.preprocessing import StandardScaler
+          features = ['No.','Time','Length','cumilative_bytes','delta time','fw1_mon_if/dir','freq','RSSI','TX rate','packet length','rel_time']
+          n = 5000
+          X = np.random.normal(loc=50, scale=10, size=(n, len(features)))
+          X = np.clip(X, 0, 200)
+          scaler = StandardScaler()
+          X_scaled = scaler.fit_transform(X)
+          model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+          model.fit(X_scaled)
+          os.makedirs('model', exist_ok=True)
+          joblib.dump(model, 'model/isolation_forest.pkl')
+          joblib.dump(scaler, 'model/scaler.pkl')
+          joblib.dump(features, 'model/feature_names.pkl')
+          print('Modelo entrenado correctamente')
+          "
+          pytest tests/ -v
+          echo " Modelo entrenado y tests pasados"

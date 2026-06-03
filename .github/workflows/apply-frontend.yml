@@ -1,0 +1,36 @@
+name:  Apply — Frontend (dashboard)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply-frontend:
+    name: Subir dashboard a Azure Storage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.ARM_TENANT_ID }}
+          subscription-id: ${{ vars.ARM_SUBSCRIPTION_ID }}
+
+      - name: Subir index.html
+        run: |
+          az storage blob upload \
+            --account-name stsocsmlstorage \
+            --container-name '$web' \
+            --name index.html \
+            --file frontend/index.html \
+            --content-type "text/html" \
+            --auth-mode login \
+            --overwrite
+          echo " Dashboard disponible en https://stsocsmlstorage.z28.web.core.windows.net/"
